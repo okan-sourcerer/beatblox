@@ -84,6 +84,7 @@ object Serializer {
     fun argCode(arg: Arg): String = when (arg) {
         is Arg.Num -> formatNumber(arg.value)
         is Arg.Str -> "\"${escape(arg.value)}\""
+        is Arg.Fn -> StringBuilder("x => x").also { writeTransforms(arg.transforms, it) }.toString()
     }
 
     fun formatNumber(v: Double): String =

@@ -50,6 +50,12 @@ data class Transform(
 sealed interface Arg {
     @Serializable data class Num(val value: Double) : Arg
     @Serializable data class Str(val value: String) : Arg
+
+    /**
+     * A function argument: `every(4, x => x.fast(2).rev())`. The nested
+     * transforms are edited exactly like a chain's own blocks.
+     */
+    @Serializable data class Fn(val transforms: List<Transform> = emptyList()) : Arg
 }
 
 fun newId(): String = UUID.randomUUID().toString().substring(0, 8)

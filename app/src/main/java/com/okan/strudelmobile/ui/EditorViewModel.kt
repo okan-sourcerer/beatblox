@@ -173,7 +173,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun selectedTransform(): Transform? {
         val s = _selection.value as? Selection.Block ?: return null
-        return TreeOps.chainOfTransform(_root.value, s.transformId)?.transforms?.firstOrNull { it.id == s.transformId }
+        return TreeOps.findTransform(_root.value, s.transformId)
     }
 
     // --- tree edits -------------------------------------------------------------
@@ -207,6 +207,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun addTransform(chainId: String, fn: String) {
         val t = Vocabulary.newTransform(fn)
         edit(immediate = true) { TreeOps.addTransform(it, chainId, t) }
+        select(Selection.Block(t.id))
+    }
+
+    /** Add a block inside a function argument of [parentTransformId]. */
+    fun addNestedTransform(parentTransformId: String, argIndex: Int, fn: String) {
+        val t = Vocabulary.newTransform(fn)
+        edit(immediate = true) { TreeOps.addNestedTransform(it, parentTransformId, argIndex, t) }
         select(Selection.Block(t.id))
     }
 

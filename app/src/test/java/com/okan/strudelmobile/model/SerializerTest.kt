@@ -86,4 +86,22 @@ class SerializerTest {
         assertEquals("""note("c3 e3").s("piano").room(0.5)""", Serializer.serialize(r).code)
         assertEquals("R", r.id)
     }
+
+    @Test
+    fun `function args serialize as arrow functions and nested ops work`() {
+        val inner = Transform(id = "in1", fn = "fast", args = listOf(Arg.Num(2.0)))
+        val every = Transform(id = "ev", fn = "every", args = listOf(Arg.Num(4.0), Arg.Fn(listOf(inner))))
+        val jux = Transform(id = "jx", fn = "jux", args = listOf(Arg.Fn()))
+        var c = Chain(id = "X", source = MiniSource("s", "bd sd"), transforms = listOf(every, jux))
+        assertEquals("""s("bd sd").every(4, x => x.fast(2)).jux(x => x)""", Serializer.serialize(c).code)
+
+        // nested lookup / edit / remove go through the same ops as top-level blocks
+        assertEquals("X", TreeOps.chainOfTransform(c, "in1")!!.id)
+        c = TreeOps.setArg(c, "in1", 0, Arg.Num(3.0))
+        assertEquals("""s("bd sd").every(4, x => x.fast(3)).jux(x => x)""", Serializer.serialize(c).code)
+        c = TreeOps.addNestedTransform(c, "jx", 0, Transform(id = "in2", fn = "rev"))
+        assertEquals("""s("bd sd").every(4, x => x.fast(3)).jux(x => x.rev())""", Serializer.serialize(c).code)
+        c = TreeOps.removeTransform(c, "in1")
+        assertEquals("""s("bd sd").every(4, x => x).jux(x => x.rev())""", Serializer.serialize(c).code)
+    }
 }

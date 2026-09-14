@@ -16,12 +16,33 @@ object TreeOps {
         return null
     }
 
-    /** Which chain owns transform [transformId], if any. */
+    /** Which chain owns transform [transformId] (directly or nested in a function arg), if any. */
     fun chainOfTransform(root: Chain, transformId: String): Chain? {
-        if (root.transforms.any { it.id == transformId }) return root
+        if (containsTransform(root.transforms, transformId)) return root
         val group = root.source as? GroupSource ?: return null
         return group.children.firstNotNullOfOrNull { chainOfTransform(it, transformId) }
     }
+
+    fun findTransform(root: Chain, transformId: String): Transform? =
+        chainOfTransform(root, transformId)?.let { findIn(it.transforms, transformId) }
+
+    private fun containsTransform(list: List<Transform>, id: String): Boolean = findIn(list, id) != null
+
+    private fun findIn(list: List<Transform>, id: String): Transform? {
+        for (t in list) {
+            if (t.id == id) return t
+            for (arg in t.args) if (arg is Arg.Fn) findIn(arg.transforms, id)?.let { return it }
+        }
+        return null
+    }
+
+    /** Add a block inside a function argument: `every(4, x => x.<new>)`. */
+    fun addNestedTransform(root: Chain, parentTransformId: String, argIndex: Int, transform: Transform): Chain =
+        updateTransform(root, parentTransformId) { t ->
+            t.copy(args = t.args.mapIndexed { i, a ->
+                if (i == argIndex && a is Arg.Fn) a.copy(transforms = a.transforms + transform) else a
+            })
+        }
 
     fun update(root: Chain, id: String, edit: (Chain) -> Chain): Chain {
         if (root.id == id) return edit(root)
@@ -100,9 +121,21 @@ object TreeOps {
         is GroupSource -> s.children.flatMap { miniSources(it) }
     }
 
+    /**
+     * Applies [f] to every transform list in the tree: each chain's own list
+     * and every nested function-argument list, innermost first.
+     */
     private fun mapTransforms(root: Chain, f: (List<Transform>) -> List<Transform>): Chain {
         val src = root.source
         val newSource = if (src is GroupSource) src.copy(children = src.children.map { mapTransforms(it, f) }) else src
-        return root.copy(source = newSource, transforms = f(root.transforms))
+        return root.copy(source = newSource, transforms = mapList(root.transforms, f))
+    }
+
+    private fun mapList(list: List<Transform>, f: (List<Transform>) -> List<Transform>): List<Transform> {
+        val inner = list.map { t ->
+            if (t.args.none { it is Arg.Fn }) t
+            else t.copy(args = t.args.map { a -> if (a is Arg.Fn) a.copy(transforms = mapList(a.transforms, f)) else a })
+        }
+        return f(inner)
     }
 }

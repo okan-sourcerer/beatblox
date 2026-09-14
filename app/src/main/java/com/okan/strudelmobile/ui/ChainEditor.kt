@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -56,6 +58,7 @@ import com.okan.strudelmobile.model.Chain
 import com.okan.strudelmobile.model.FunctionSpec
 import com.okan.strudelmobile.model.GroupSource
 import com.okan.strudelmobile.model.MiniSource
+import com.okan.strudelmobile.model.ParamSpec
 import com.okan.strudelmobile.model.Serializer
 import com.okan.strudelmobile.model.Transform
 import com.okan.strudelmobile.model.Vocabulary
@@ -110,7 +113,7 @@ fun ChainEditor(
         ) { t, handle, dragging ->
             TransformBlock(
                 transform = t,
-                selected = (selection as? Selection.Block)?.transformId == t.id,
+                selection = selection,
                 dragging = dragging,
                 handle = handle,
                 vm = vm,
@@ -289,11 +292,12 @@ private fun GroupBlock(
 @Composable
 private fun TransformBlock(
     transform: Transform,
-    selected: Boolean,
+    selection: Selection,
     dragging: Boolean,
     handle: Modifier,
     vm: EditorViewModel,
 ) {
+    val selected = (selection as? Selection.Block)?.transformId == transform.id
     val spec = Vocabulary.spec(transform.fn)
     val color = categoryColor(spec?.category)
     val border = when {
@@ -301,7 +305,7 @@ private fun TransformBlock(
         selected -> Sky
         else -> MaterialTheme.colorScheme.outline
     }
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .clip(BlockShape)
@@ -309,8 +313,8 @@ private fun TransformBlock(
             .border(if (selected || dragging) 2.dp else 1.dp, border, BlockShape)
             .clickable { vm.select(Selection.Block(transform.id)) }
             .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         DragHandle(handle)
         Box(
             Modifier
@@ -337,11 +341,36 @@ private fun TransformBlock(
             Icon(Icons.Default.Close, "Remove", tint = Coral)
         }
     }
+    // Function arguments: an indented mini-chain of blocks, `x => x.<these>`.
+    transform.args.forEachIndexed { argIndex, arg ->
+        if (arg !is Arg.Fn) return@forEachIndexed
+        val paramName = (spec?.params?.getOrNull(argIndex) as? ParamSpec.Fn)?.name ?: "do"
+        Column(Modifier.fillMaxWidth().padding(start = 24.dp, top = 4.dp, end = 4.dp)) {
+            Text(
+                "$paramName: x →",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = color,
+            )
+            Spacer(Modifier.height(4.dp))
+            ReorderableColumn(
+                items = arg.transforms,
+                key = { it.id },
+                onMove = { id, delta -> vm.moveTransform(id, delta) },
+                spacing = 4.dp,
+            ) { inner, innerHandle, innerDragging ->
+                TransformBlock(inner, selection, innerDragging, innerHandle, vm)
+            }
+            AddBlockButton(compact = true, onAdd = { vm.addNestedTransform(transform.id, argIndex, it) })
+        }
+    }
+    }
 }
 
 private fun argLabel(arg: Arg): String = when (arg) {
     is Arg.Num -> Serializer.formatNumber(arg.value)
     is Arg.Str -> "\"${arg.value}\""
+    is Arg.Fn -> if (arg.transforms.isEmpty()) "x => x" else "x => x" + arg.transforms.joinToString("") { ".${it.fn}(…)" }
 }
 
 fun categoryColor(c: FunctionSpec.Category?): Color = when (c) {
@@ -407,12 +436,15 @@ private fun FnChooser(
 }
 
 @Composable
-private fun AddBlockButton(onAdd: (String) -> Unit) {
+private fun AddBlockButton(onAdd: (String) -> Unit, compact: Boolean = false) {
     var open by remember { mutableStateOf(false) }
     Box {
-        TextButton(onClick = { open = true }) {
-            Icon(Icons.Default.Add, null)
-            Text(" Add block")
+        TextButton(
+            onClick = { open = true },
+            contentPadding = if (compact) PaddingValues(horizontal = 8.dp, vertical = 0.dp) else ButtonDefaults.TextButtonContentPadding,
+        ) {
+            Icon(Icons.Default.Add, null, modifier = if (compact) Modifier.size(16.dp) else Modifier)
+            Text(if (compact) " add" else " Add block", style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             var lastCategory: FunctionSpec.Category? = null

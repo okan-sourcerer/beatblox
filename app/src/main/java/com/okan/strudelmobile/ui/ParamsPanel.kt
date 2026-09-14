@@ -3,6 +3,7 @@ package com.okan.strudelmobile.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -85,9 +87,22 @@ fun ParamsPanel(vm: EditorViewModel) {
             Spacer(Modifier.height(8.dp))
             val arg = transform.args.getOrNull(index)
             when (param) {
-                is ParamSpec.Number -> NumberParam(param, (arg as? Arg.Num)?.value ?: param.default,
+                is ParamSpec.Number -> NumberParam(
+                    param = param,
+                    arg = arg,
                     onChange = { vm.setArg(transform.id, index, Arg.Num(it)) },
-                    onCommit = { vm.setArgFinal(transform.id, index, Arg.Num(it)) })
+                    onCommit = { vm.setArgFinal(transform.id, index, Arg.Num(it)) },
+                    onPattern = { vm.setArg(transform.id, index, Arg.Str(it)) },
+                    onToggle = { toPattern ->
+                        val current = (arg as? Arg.Num)?.value ?: param.default
+                        vm.setArgFinal(transform.id, index, if (toPattern) Arg.Str(Serializer.formatNumber(current)) else Arg.Num(current))
+                    },
+                )
+                is ParamSpec.Fn -> Text(
+                    "${param.name}: edit the nested blocks inside this block in the editor above.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 is ParamSpec.Choice -> ChoiceParam(param, (arg as? Arg.Str)?.value ?: param.default) {
                     vm.setArgFinal(transform.id, index, Arg.Str(it))
                 }
@@ -99,12 +114,46 @@ fun ParamsPanel(vm: EditorViewModel) {
     }
 }
 
+/**
+ * A number can also be a mini-notation *pattern* of numbers ("<400 2000>",
+ * "1 0.5"), which Strudel evaluates per step. The ⌨ toggle switches between
+ * the slider (Arg.Num) and a text field (Arg.Str).
+ */
 @Composable
-private fun NumberParam(param: ParamSpec.Number, value: Double, onChange: (Double) -> Unit, onCommit: (Double) -> Unit) {
+private fun NumberParam(
+    param: ParamSpec.Number,
+    arg: Arg?,
+    onChange: (Double) -> Unit,
+    onCommit: (Double) -> Unit,
+    onPattern: (String) -> Unit,
+    onToggle: (toPattern: Boolean) -> Unit,
+) {
+    val isPattern = arg is Arg.Str
+    val value = (arg as? Arg.Num)?.value ?: param.default
     var local by remember(param.name, value) { mutableFloatStateOf(value.toFloat()) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(param.name, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-        Text(Serializer.formatNumber(snap(local.toDouble(), param)), fontFamily = FontFamily.Monospace, color = Amber)
+        if (!isPattern) Text(Serializer.formatNumber(snap(local.toDouble(), param)), fontFamily = FontFamily.Monospace, color = Amber)
+        TextButton(onClick = { onToggle(!isPattern) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+            Text(if (isPattern) "slider" else "pattern", style = MaterialTheme.typography.labelSmall)
+        }
+    }
+    if (isPattern) {
+        OutlinedTextField(
+            value = (arg as Arg.Str).value,
+            onValueChange = onPattern,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("e.g. <${Serializer.formatNumber(param.min)} ${Serializer.formatNumber(param.max)}>") },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false),
+            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace),
+        )
+        Text(
+            "a mini-notation pattern of values: \"<a b>\" alternates per cycle, \"a b\" changes per step",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
     }
     Slider(
         value = local,
