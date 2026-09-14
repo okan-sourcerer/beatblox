@@ -17,7 +17,15 @@ val keystoreProps = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
-fun urlProp(name: String): String = (project.findProperty(name) as String?).orEmpty()
+// local.properties (git-ignored) wins over gradle.properties / -P, so the hub
+// key and other per-machine values never end up in a commit.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun urlProp(name: String): String =
+    localProps.getProperty(name)?.takeIf { it.isNotBlank() } ?: (project.findProperty(name) as String?).orEmpty()
 
 android {
     namespace = "com.okan.beatblox"

@@ -71,9 +71,9 @@ block-based pattern editor instead of typed code. See
    keyPassword=...
    ```
 3. Set the deployment URLs (in `gradle.properties`, `~/.gradle/gradle.properties`, or `-P`):
-   `beatblox.hubKey` (the hub's per-app API key — keep it in
-   `~/.gradle/gradle.properties`, not in the repo), `beatblox.sourceUrl`,
-   `beatblox.downloadUrl`. Empty URLs hide the corresponding link; an empty key
+   `beatblox.hubKey` (the hub's per-app API key), `beatblox.sourceUrl`,
+   `beatblox.downloadUrl`. Put secrets in `local.properties` (git-ignored); it
+   overrides `gradle.properties`. Empty URLs hide the corresponding link; an empty key
    keeps feedback queued on the device.
 4. `./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
    Bump `versionCode`/`versionName` in `app/build.gradle.kts` for every upload.
