@@ -162,6 +162,50 @@
     }
   }
 
+  // --- sample preloading -----------------------------------------------------
+  // superdough fetches a sample the first time it is triggered and drops that
+  // first event ("took too long"). Warm the cache for everything a pattern
+  // will use before it starts, so the first press plays.
+  let loadingCount = 0;
+  const setLoading = (delta) => {
+    const was = loadingCount > 0;
+    loadingCount = Math.max(0, loadingCount + delta);
+    const now = loadingCount > 0;
+    if (was !== now) native('onLoading', now);
+  };
+
+  async function preloadPattern(pat, cycles) {
+    let haps;
+    try {
+      haps = pat.queryArc(0, cycles).filter((h) => h.hasOnset());
+    } catch (e) {
+      return 0;
+    }
+    const seen = new Set();
+    const jobs = [];
+    for (const hap of haps) {
+      hap.ensureObjectValue();
+      const v = hap.value;
+      if (!v || typeof v.s !== 'string') continue;
+      const key = (v.bank ? v.bank + '_' : '') + v.s;
+      const sound = strudel.getSound(key);
+      if (!sound || !sound.data || sound.data.type !== 'sample') continue;
+      const id = key.toLowerCase() + ':' + (v.n || 0) + ':' + (v.note !== undefined ? v.note : '');
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (jobs.length >= 64) break;
+      jobs.push(strudel.getSampleBuffer(v, sound.data.samples).catch(() => {}));
+    }
+    if (!jobs.length) return 0;
+    setLoading(+1);
+    try {
+      await Promise.all(jobs);
+    } finally {
+      setLoading(-1);
+    }
+    return jobs.length;
+  }
+
   // --- inbound: Kotlin -> JS ----------------------------------------------
   const requireReady = () => {
     if (!ready) throw new Error('strudel not ready');
@@ -183,10 +227,16 @@
       requireReady();
       locTable = locTableJson ? JSON.parse(locTableJson) : [];
       liveHaps = [];
-      return repl.evaluate(code, !!autostart).then(
-        () => native('onPatternSet', code),
-        (err) => native('onError', String(err && err.message ? err.message : err)),
-      );
+      // Warm the sample cache first (built without the transpiler; cheap),
+      // then evaluate for real. Eight cycles covers <a b c d> alternations.
+      let warm = Promise.resolve();
+      try { warm = preloadPattern(buildPattern(code), 8); } catch (e) { /* evaluate() will report it */ }
+      return warm
+        .then(() => repl.evaluate(code, !!autostart))
+        .then(
+          () => native('onPatternSet', code),
+          (err) => native('onError', String(err && err.message ? err.message : err)),
+        );
     },
 
     start() {
@@ -225,23 +275,27 @@
       ctx.resume();
       const cps = repl.scheduler.cps || 0.5;
       const n = Math.max(1, Number(cycles) || 1);
+      let pat;
       try {
-        const pat = buildPattern(code);
-        const haps = pat
-          .queryArc(0, n, { _cps: cps })
-          .filter((h) => h.hasOnset())
-          .sort((a, b) => a.whole.begin.valueOf() - b.whole.begin.valueOf());
+        pat = buildPattern(code);
+      } catch (err) {
+        native('onError', 'preview: ' + (err && err.message ? err.message : err));
+        return 0;
+      }
+      const haps = pat
+        .queryArc(0, n, { _cps: cps })
+        .filter((h) => h.hasOnset())
+        .sort((a, b) => a.whole.begin.valueOf() - b.whole.begin.valueOf());
+      // Schedule only once the samples are in, so the first audition is heard.
+      preloadPattern(pat, n).then(() => {
         const t0 = ctx.currentTime + 0.05;
         for (const hap of haps) {
           hap.ensureObjectValue();
           const onset = t0 + hap.whole.begin.valueOf() / cps;
           strudel.superdough(hap.value, onset, hap.duration / cps, cps, hap.whole.begin.valueOf());
         }
-        return haps.length;
-      } catch (err) {
-        native('onError', 'preview: ' + (err && err.message ? err.message : err));
-        return 0;
-      }
+      });
+      return haps.length;
     },
 
     isReady() { return ready; },

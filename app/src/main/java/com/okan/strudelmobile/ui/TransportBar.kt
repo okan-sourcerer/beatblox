@@ -1,6 +1,7 @@
 package com.okan.strudelmobile.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +42,7 @@ import kotlin.math.roundToInt
 fun TransportBar(
     ready: Boolean,
     playing: Boolean,
+    loading: Boolean,
     cpm: Double,
     patternName: String?,
     onLibrary: () -> Unit,
@@ -64,15 +66,19 @@ fun TransportBar(
                 Text("Loading Strudel…", style = MaterialTheme.typography.bodyMedium)
                 return@Row
             }
-            FilledIconButton(
-                onClick = onTogglePlay,
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = if (playing) Coral else Mint,
-                    contentColor = Ink,
-                ),
-                modifier = Modifier.size(48.dp),
-            ) {
-                Icon(if (playing) Icons.Default.Stop else Icons.Default.PlayArrow, if (playing) "Stop" else "Play")
+            Box(contentAlignment = Alignment.Center) {
+                FilledIconButton(
+                    onClick = onTogglePlay,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = if (playing) Coral else Mint,
+                        contentColor = Ink,
+                    ),
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(if (playing) Icons.Default.Stop else Icons.Default.PlayArrow, if (playing) "Stop" else "Play")
+                }
+                // Samples are being fetched; playback starts by itself when they are in.
+                if (loading) CircularProgressIndicator(Modifier.size(56.dp), strokeWidth = 3.dp, color = Amber)
             }
             IconButton(onClick = onHush) { Icon(Icons.Default.VolumeOff, "Hush") }
             IconButton(onClick = onReset) { Icon(Icons.Default.RestartAlt, "Reset pattern") }
@@ -92,9 +98,9 @@ fun TransportBar(
                     modifier = Modifier.width(72.dp),
                 )
                 Text(
-                    patternName ?: "unsaved",
+                    if (loading) "loading sounds…" else patternName ?: "unsaved",
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (patternName != null) Amber else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (loading || patternName != null) Amber else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     modifier = Modifier.width(96.dp).clickable(onClick = onLibrary),
                 )

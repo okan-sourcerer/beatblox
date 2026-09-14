@@ -49,6 +49,10 @@ class StrudelEngine(context: Context) {
     private val _active = MutableStateFlow<Set<ActiveToken>>(emptySet())
     val active: StateFlow<Set<ActiveToken>> = _active.asStateFlow()
 
+    /** True while samples a pattern/preview needs are being fetched. */
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
     private val _sounds = MutableStateFlow<List<SoundInfo>>(emptyList())
     val sounds: StateFlow<List<SoundInfo>> = _sounds.asStateFlow()
 
@@ -137,6 +141,11 @@ class StrudelEngine(context: Context) {
         @JavascriptInterface
         fun onToggle(started: Boolean) {
             _playing.value = started
+        }
+
+        @JavascriptInterface
+        fun onLoading(loading: Boolean) {
+            _loading.value = loading
         }
 
         @JavascriptInterface

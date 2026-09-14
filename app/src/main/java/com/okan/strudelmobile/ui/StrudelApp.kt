@@ -56,6 +56,7 @@ fun StrudelApp(vm: EditorViewModel) {
     val active by vm.engine.active.collectAsStateWithLifecycle()
     val ready by vm.engine.ready.collectAsStateWithLifecycle()
     val playing by vm.engine.playing.collectAsStateWithLifecycle()
+    val loading by vm.engine.loading.collectAsStateWithLifecycle()
     val error by vm.engine.lastError.collectAsStateWithLifecycle()
     val cpm by vm.cpm.collectAsStateWithLifecycle()
     val canUndo by vm.canUndo.collectAsStateWithLifecycle()
@@ -84,6 +85,7 @@ fun StrudelApp(vm: EditorViewModel) {
             TransportBar(
                 ready = ready,
                 playing = playing,
+                loading = loading,
                 cpm = cpm,
                 patternName = patternName,
                 onLibrary = { showLibrary = true },
