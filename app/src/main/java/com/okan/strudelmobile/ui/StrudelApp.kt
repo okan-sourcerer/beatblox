@@ -64,6 +64,9 @@ fun StrudelApp(vm: EditorViewModel) {
     val patternName by vm.currentName.collectAsStateWithLifecycle()
     var showLibrary by rememberSaveable { mutableStateOf(false) }
     var showHelp by rememberSaveable { mutableStateOf(false) }
+    var showShare by rememberSaveable { mutableStateOf(false) }
+    var showFeedback by rememberSaveable { mutableStateOf(false) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(error) {
         if (error != null) {
@@ -90,6 +93,9 @@ fun StrudelApp(vm: EditorViewModel) {
                 patternName = patternName,
                 onLibrary = { showLibrary = true },
                 onHelp = { showHelp = true },
+                onShare = { showShare = true },
+                onFeedback = { showFeedback = true },
+                onAbout = { showAbout = true },
                 canUndo = canUndo,
                 canRedo = canRedo,
                 onUndo = vm::undo,
@@ -128,6 +134,15 @@ fun StrudelApp(vm: EditorViewModel) {
         }
         if (showHelp) {
             HelpSheet(onDismiss = { showHelp = false })
+        }
+        if (showShare) {
+            ShareSheet(vm, onDismiss = { showShare = false })
+        }
+        if (showFeedback) {
+            FeedbackSheet(vm, onDismiss = { showFeedback = false })
+        }
+        if (showAbout) {
+            AboutSheet(onDismiss = { showAbout = false }, onFeedback = { showAbout = false; showFeedback = true })
         }
 
         if (error != null) {

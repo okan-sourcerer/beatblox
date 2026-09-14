@@ -9,3 +9,6 @@
 .externalNativeBuild
 .cxx
 web/node_modules/
+/keystore.properties
+*.jks
+*.keystore

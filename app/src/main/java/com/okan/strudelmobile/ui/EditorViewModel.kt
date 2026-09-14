@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.okan.strudelmobile.engine.StrudelEngine
+import com.okan.strudelmobile.feedback.FeedbackClient
+import com.okan.strudelmobile.feedback.FeedbackKind
+import com.okan.strudelmobile.feedback.FeedbackReport
+import com.okan.strudelmobile.feedback.SendResult
 import com.okan.strudelmobile.model.Arg
 import com.okan.strudelmobile.model.Chain
 import com.okan.strudelmobile.model.GroupSource
@@ -38,6 +42,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     val engine = StrudelEngine(app)
     private val store = PatternStore(app)
     private val libraryStore = PatternLibrary(app)
+    private val feedback = FeedbackClient(app)
 
     private val _root = MutableStateFlow(store.load() ?: defaultPattern())
     val root: StateFlow<Chain> = _root.asStateFlow()
@@ -75,6 +80,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var pushedOnce = false
 
     init {
+        // Deliver feedback written while offline / before the server existed.
+        viewModelScope.launch { feedback.flush() }
         // Push the initial pattern once the engine comes up, without starting it.
         viewModelScope.launch {
             engine.ready.collect { ready ->
@@ -376,6 +383,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Audition a sound name on its own. */
     fun previewSound(name: String) = engine.preview("s(\"$name\")", 1)
+
+    // --- feedback -------------------------------------------------------------------
+
+    suspend fun sendFeedback(kind: FeedbackKind, message: String, contact: String?, attachPattern: Boolean): SendResult =
+        feedback.submit(
+            FeedbackReport(
+                kind = kind.wire,
+                message = message,
+                contact = contact,
+                pattern = if (attachPattern) Share.exportCode(_code.value, _cpm.value, currentName.value) else null,
+            ),
+        )
 
     // --- push to engine -------------------------------------------------------------
 

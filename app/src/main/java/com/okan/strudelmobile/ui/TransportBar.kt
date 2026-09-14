@@ -14,12 +14,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RateReview
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +54,9 @@ fun TransportBar(
     patternName: String?,
     onLibrary: () -> Unit,
     onHelp: () -> Unit,
+    onShare: () -> Unit,
+    onFeedback: () -> Unit,
+    onAbout: () -> Unit,
     canUndo: Boolean,
     canRedo: Boolean,
     onUndo: () -> Unit,
@@ -57,6 +67,7 @@ fun TransportBar(
     onReset: () -> Unit,
 ) {
     var dragCpm by remember(cpm) { mutableFloatStateOf(cpm.toFloat()) }
+    var menuOpen by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -83,7 +94,19 @@ fun TransportBar(
             IconButton(onClick = onHush) { Icon(Icons.Default.VolumeOff, "Hush") }
             IconButton(onClick = onReset) { Icon(Icons.Default.RestartAlt, "Reset pattern") }
             IconButton(onClick = onLibrary) { Icon(Icons.Default.LibraryMusic, "Patterns") }
-            IconButton(onClick = onHelp) { Icon(Icons.AutoMirrored.Filled.HelpOutline, "Help") }
+            Box {
+                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, "More") }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    @Composable
+                    fun item(label: String, icon: @Composable () -> Unit, action: () -> Unit) {
+                        DropdownMenuItem(text = { Text(label) }, leadingIcon = icon, onClick = { menuOpen = false; action() })
+                    }
+                    item("Share pattern…", { Icon(Icons.Default.Share, null) }, onShare)
+                    item("Help", { Icon(Icons.AutoMirrored.Filled.HelpOutline, null) }, onHelp)
+                    item("Send feedback", { Icon(Icons.Default.RateReview, null) }, onFeedback)
+                    item("About", { Icon(Icons.Default.Info, null) }, onAbout)
+                }
+            }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onUndo, enabled = canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, "Undo") }
             IconButton(onClick = onRedo, enabled = canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, "Redo") }

@@ -12,6 +12,7 @@ block-based pattern editor instead of typed code. See
 | `app/.../engine/` | `StrudelEngine` owns the WebView and is the only thing that talks to JS. `StrudelWebViewHost` keeps it attached (1dp, invisible). |
 | `app/.../model/` | The pattern tree (`Chain` / `MiniSource` / `GroupSource` / `Transform`), the vocabulary (`Vocabulary`), `Serializer` (tree → code + location table), `TreeOps` (immutable edits). |
 | `app/.../ui/` | Compose: transport bar, recursive `ChainEditor`, piano/degree picker, sound browser, params helper, code readout. `EditorViewModel` glues model ↔ engine. |
+| `app/.../feedback/` | `FeedbackClient`: on-device outbox + JSON POST to the shared feedback server. |
 | `web/` | npm project used only to fetch/update the Strudel bundle: `npm install && npm run sync`. |
 
 ## How it works
@@ -34,12 +35,49 @@ block-based pattern editor instead of typed code. See
   GitHub (`dough-samples`). `mediaPlaybackRequiresUserGesture = false` lets the
   native Play button start audio.
 
+- **Share / export** (⋮ → Share pattern, or the buttons on the Code tab):
+  `Share.exportCode` prepends `setcpm(...)` so the code plays at the same tempo
+  on strudel.cc; `Share.strudelUrl` builds a `https://strudel.cc/#<base64>` link
+  the REPL opens directly.
+- **Feedback** (⋮ → Send feedback): the report is queued in SharedPreferences
+  first, then `FeedbackClient.flush()` POSTs each one as JSON to
+  `BuildConfig.FEEDBACK_URL` (also retried at app start). With the URL empty —
+  the current state, the server isn't up yet — nothing leaves the device and
+  the UI says so. Payload: `{project:"strudel-mobile", kind, message, contact?,
+  pattern?, appVersion, appVersionCode, device, androidVersion, createdAt}`; a
+  2xx response means delivered. To test against a server on the PC: `adb reverse
+  tcp:9000 tcp:9000`, then `./gradlew installDebug -Pstrudel.feedbackUrl=http://127.0.0.1:9000/feedback`
+  (debug builds allow plain http to localhost only; release must use https).
+
 ## Build
 
 ```
 ./gradlew :app:installDebug
 ./gradlew :app:testDebugUnitTest
 ```
+
+### Release build
+
+1. Create a signing key once and keep it safe — updates must be signed with the same key:
+   `keytool -genkeypair -v -keystore strudel-release.jks -alias strudel -keyalg RSA -keysize 4096 -validity 10000`
+2. Put `keystore.properties` in the repo root (git-ignored):
+   ```
+   storeFile=strudel-release.jks
+   storePassword=...
+   keyAlias=strudel
+   keyPassword=...
+   ```
+3. Set the deployment URLs (in `gradle.properties`, `~/.gradle/gradle.properties`, or `-P`):
+   `strudel.feedbackUrl`, `strudel.sourceUrl`, `strudel.downloadUrl`. Empty ones
+   hide the corresponding link / keep feedback queued.
+4. `./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
+   Bump `versionCode`/`versionName` in `app/build.gradle.kts` for every upload.
+
+## License
+
+AGPL-3.0 (see `LICENSE`) — the app bundles Strudel, which is AGPL, so the app
+is too. Hosting the APK for download means also offering the source; point
+`strudel.sourceUrl` at the repository.
 
 Debugging the JS side in a desktop browser: `npx http-server app/src/main/assets/strudel -p 8765`
 and open it — without `window.Android` the bridge logs callbacks to the console.
