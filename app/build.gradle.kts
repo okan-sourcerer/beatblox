@@ -35,6 +35,8 @@ android {
         applicationId = "com.okan.beatblox"
         minSdk = 26
         targetSdk = 37
+        // Bump versionCode for EVERY APK you host: Android refuses to update an
+        // installed app to the same or a lower code. versionName is just for display.
         versionCode = 2
         versionName = "0.2.0"
 

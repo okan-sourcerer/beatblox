@@ -76,7 +76,11 @@ block-based pattern editor instead of typed code. See
    overrides `gradle.properties`. Empty URLs hide the corresponding link; an empty key
    keeps feedback queued on the device.
 4. `./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
-   Bump `versionCode`/`versionName` in `app/build.gradle.kts` for every upload.
+5. **Before every upload bump `versionCode`** in `app/build.gradle.kts` (and
+   `versionName` when it's user-visible). Android only installs an update if
+   the new `versionCode` is higher than the installed one — same code means
+   users' phones refuse it with "app not installed" / nothing happens. The
+   APK must also be signed with the same key as the previous release.
 
 ## License
 
