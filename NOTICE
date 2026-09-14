@@ -1,0 +1,27 @@
+BeatBlox — a block-based Android front end for Strudel
+Copyright (C) 2026 Okan (okan-sourcerer)
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+(LICENSE) for more details.
+
+Third-party software bundled or used by this app
+------------------------------------------------
+
+@strudel/web 1.3.0 — https://github.com/tidalcycles/strudel
+  Copyright the Strudel contributors. AGPL-3.0-or-later.
+  Bundled as app/src/main/assets/strudel/strudel-web.js
+  (license text: app/src/main/assets/strudel/LICENSE.strudel).
+
+Sample banks — fetched at runtime, not bundled:
+  dough-samples — https://github.com/felixroos/dough-samples
+  tidal-drum-machines and other collections referenced by Strudel's default
+  sample maps. Each bank carries its own license; see the respective repos.
+
+AndroidX / Jetpack Compose / Kotlin — Apache-2.0.

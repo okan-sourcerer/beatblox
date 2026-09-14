@@ -75,9 +75,10 @@ block-based pattern editor instead of typed code. See
 
 ## License
 
-AGPL-3.0 (see `LICENSE`) — the app bundles Strudel, which is AGPL, so the app
-is too. Hosting the APK for download means also offering the source; point
-`strudel.sourceUrl` at the repository.
+Copyright (C) 2026 Okan (okan-sourcerer). AGPL-3.0-or-later — see `LICENSE`
+(full text) and `NOTICE` (copyright + third-party credits). The app bundles
+Strudel, which is AGPL, so the app is too. Hosting the APK for download means
+also offering the source; point `strudel.sourceUrl` at this repository.
 
 Debugging the JS side in a desktop browser: `npx http-server app/src/main/assets/strudel -p 8765`
 and open it — without `window.Android` the bridge logs callbacks to the console.
