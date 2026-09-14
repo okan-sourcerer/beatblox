@@ -12,7 +12,7 @@ block-based pattern editor instead of typed code. See
 | `app/.../engine/` | `StrudelEngine` owns the WebView and is the only thing that talks to JS. `StrudelWebViewHost` keeps it attached (1dp, invisible). |
 | `app/.../model/` | The pattern tree (`Chain` / `MiniSource` / `GroupSource` / `Transform`), the vocabulary (`Vocabulary`), `Serializer` (tree → code + location table), `TreeOps` (immutable edits). |
 | `app/.../ui/` | Compose: transport bar, recursive `ChainEditor`, piano/degree picker, sound browser, params helper, code readout. `EditorViewModel` glues model ↔ engine. |
-| `app/.../feedback/` | `FeedbackClient`: on-device outbox + JSON POST to the shared feedback server. |
+| `app/.../feedback/` | `FeedbackClient`: on-device outbox + `POST /api/feedback` to the Coreworkbench hub. |
 | `web/` | npm project used only to fetch/update the Strudel bundle: `npm install && npm run sync`. |
 
 ## How it works
@@ -39,15 +39,18 @@ block-based pattern editor instead of typed code. See
   `Share.exportCode` prepends `setcpm(...)` so the code plays at the same tempo
   on strudel.cc; `Share.strudelUrl` builds a `https://strudel.cc/#<base64>` link
   the REPL opens directly.
-- **Feedback** (⋮ → Send feedback): the report is queued in SharedPreferences
-  first, then `FeedbackClient.flush()` POSTs each one as JSON to
-  `BuildConfig.FEEDBACK_URL` (also retried at app start). With the URL empty —
-  the current state, the server isn't up yet — nothing leaves the device and
-  the UI says so. Payload: `{project:"beatblox", kind, message, contact?,
-  pattern?, appVersion, appVersionCode, device, androidVersion, createdAt}`; a
-  2xx response means delivered. To test against a server on the PC: `adb reverse
-  tcp:9000 tcp:9000`, then `./gradlew installDebug -Pstrudel.feedbackUrl=http://127.0.0.1:9000/feedback`
-  (debug builds allow plain http to localhost only; release must use https).
+- **Feedback** (⋮ → Send feedback): reports go to the Coreworkbench hub
+  (`POST {HUB_URL}/api/feedback`, `Authorization: Bearer <per-app key>`; field
+  contract in `docs/integration.md`, not tracked). Each report is queued in
+  SharedPreferences first, then `FeedbackClient.flush()` delivers the queue
+  (on submit and at app start); every report carries its own
+  `idempotency_key`, so retries can't duplicate. 2xx = delivered, 401/422 =
+  dropped (would never succeed), anything else = kept for retry. With
+  `strudel.hubKey` empty nothing leaves the device and the UI says so.
+  Sent: type, message, title, optional email, per-install `user_id`,
+  app/OS/device/locale/timezone/screen, the engine log (≤200 lines) and
+  `metadata{pattern, pattern_name, cpm, strudel_version, app_version_code}`.
+  `environment` is `dev` for debug builds and `prod` for release.
 
 ## Build
 
@@ -68,14 +71,16 @@ block-based pattern editor instead of typed code. See
    keyPassword=...
    ```
 3. Set the deployment URLs (in `gradle.properties`, `~/.gradle/gradle.properties`, or `-P`):
-   `strudel.feedbackUrl`, `strudel.sourceUrl`, `strudel.downloadUrl`. Empty ones
-   hide the corresponding link / keep feedback queued.
+   `strudel.hubKey` (the hub's per-app API key — keep it in
+   `~/.gradle/gradle.properties`, not in the repo), `strudel.sourceUrl`,
+   `strudel.downloadUrl`. Empty URLs hide the corresponding link; an empty key
+   keeps feedback queued on the device.
 4. `./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
    Bump `versionCode`/`versionName` in `app/build.gradle.kts` for every upload.
 
 ## License
 
-Copyright (C) 2026 Okan (okan-sourcerer). AGPL-3.0-or-later — see `LICENSE`
+Copyright (C) 2026 Okan Tanrıverdi (okan-sourcerer). AGPL-3.0-or-later — see `LICENSE`
 (full text) and `NOTICE` (copyright + third-party credits). The app bundles
 Strudel, which is AGPL, so the app is too. Hosting the APK for download means
 also offering the source; point `strudel.sourceUrl` at this repository.

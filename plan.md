@@ -76,8 +76,8 @@ Port the highest-value pieces of Strudel desktop's panel first: sound/sample bro
 ## Next (when there's time)
 
 1. **Use it.** Play with it on the phone for a while and fix what annoys. Specifically decide whether sibling-excluded preview is right.
-2. **Hosting:** set `strudel.sourceUrl` / `strudel.downloadUrl` / `strudel.feedbackUrl`, generate the release key, publish APK + source (AGPL requires the source to be offered).
-3. **Feedback server:** the app already POSTs `{project:"beatblox", kind, message, contact?, pattern?, appVersion, appVersionCode, device, androidVersion, createdAt}`; any 2xx = delivered. Reports written before the URL was set are queued on-device and flushed on next launch.
+2. **Hosting:** set `strudel.downloadUrl` / `strudel.hubKey`, generate the release key, publish APK + source (AGPL requires the source to be offered).
+3. ✅ **Feedback server:** integrated with the Coreworkbench hub (`POST /api/feedback`, per-app key via `strudel.hubKey`). Register the app at `/admin/apps`, add `projects/beatblox.yaml` in the hub repo, send one test report from a dev build.
 4. **Tests:** only `SerializerTest` exists. `TreeOps` (edits, reorder, undo) and the bridge's location-table → chainId mapping are the two most likely silent regressions.
 5. **Background audio** — the deferred v1 follow-up: foreground service + keep the WebView attached. Biggest remaining user-facing gap; OEM-fiddly (Honor especially), so do it last.
 6. **Import:** the app can export code but not read it back. A mini parser for the app's own output subset would let patterns move between users/devices.

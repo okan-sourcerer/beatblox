@@ -25,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.okan.beatblox.BuildConfig
 
-private const val STRUDEL_VERSION = "1.3.0" // keep in sync with web/package.json (npm run sync prints it)
+const val STRUDEL_VERSION = "1.3.0" // keep in sync with web/package.json (npm run sync prints it)
 
 /** Version, who made what, and the licenses this app stands on. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +54,7 @@ fun AboutSheet(onDismiss: () -> Unit, onFeedback: () -> Unit) {
                 "A block-based way to make music with Strudel on a phone: instead of typing pattern " +
                     "code you stack blocks, and the app writes the code and plays it.",
             )
-            Body("Made by Okan (okan-sourcerer). Not affiliated with the Strudel or TidalCycles projects.")
+            Body("Made by Okan Tanrıverdi (okan-sourcerer). Not affiliated with the Strudel or TidalCycles projects.")
 
             if (BuildConfig.DOWNLOAD_URL.isNotBlank()) {
                 LinkRow("Latest version & updates", BuildConfig.DOWNLOAD_URL) { Share.open(context, it) }

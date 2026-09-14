@@ -2,6 +2,7 @@ package com.okan.beatblox.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -74,7 +75,7 @@ fun FeedbackSheet(vm: EditorViewModel, onDismiss: () -> Unit) {
                 return@Column
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FeedbackKind.entries.forEach { k ->
                     FilterChip(selected = kind == k, onClick = { kind = k }, label = { Text(k.label) })
                 }
@@ -100,7 +101,7 @@ fun FeedbackSheet(vm: EditorViewModel, onDismiss: () -> Unit) {
                 Text("Attach the current pattern's code", style = MaterialTheme.typography.bodyMedium)
             }
             Text(
-                "Also sent: app version, phone model and Android version. Nothing else.",
+                "Also sent: app version, phone model, Android version, locale and the engine log. Nothing else.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -118,8 +119,12 @@ fun FeedbackSheet(vm: EditorViewModel, onDismiss: () -> Unit) {
                             result = when (r) {
                                 SendResult.Sent -> "Sent. Thank you!"
                                 SendResult.Queued ->
-                                    "Saved on this phone. The feedback server isn't live yet, so it will be " +
-                                        "delivered by a future update — thank you for writing it anyway."
+                                    if (vm.feedbackConfigured) {
+                                        "Couldn't reach the server right now. It's saved on this phone and will be sent next time the app starts."
+                                    } else {
+                                        "Saved on this phone. This build has no feedback server configured, so it will be " +
+                                            "delivered by a future update — thank you for writing it anyway."
+                                    }
                             }
                         }
                     },

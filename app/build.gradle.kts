@@ -8,9 +8,10 @@ plugins {
 }
 
 // Deployment knobs live outside the repo: `keystore.properties` next to this
-// file (see README "Release build"), and optional -P / gradle.properties
-// overrides for the URLs baked into BuildConfig. Empty URL = feature shows as
-// "not configured" / feedback stays queued on the device.
+// file (see README "Release build"), and -P / gradle.properties values baked
+// into BuildConfig. Empty URL = link hidden; empty hub key = feedback stays
+// queued on the device. The hub key is write-only for this app, so embedding
+// it in the APK is fine (docs/integration.md).
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -29,7 +30,8 @@ android {
         versionCode = 2
         versionName = "0.2.0"
 
-        buildConfigField("String", "FEEDBACK_URL", "\"${urlProp("strudel.feedbackUrl")}\"")
+        buildConfigField("String", "HUB_URL", "\"${urlProp("strudel.hubUrl").ifBlank { "https://coreworkbench.com" }}\"")
+        buildConfigField("String", "HUB_KEY", "\"${urlProp("strudel.hubKey")}\"")
         buildConfigField("String", "SOURCE_URL", "\"${urlProp("strudel.sourceUrl")}\"")
         buildConfigField("String", "DOWNLOAD_URL", "\"${urlProp("strudel.downloadUrl")}\"")
     }
@@ -46,7 +48,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "ENVIRONMENT", "\"dev\"")
+        }
         release {
+            buildConfigField("String", "ENVIRONMENT", "\"prod\"")
             // Left off on purpose: the JS bridge (@JavascriptInterface) and
             // kotlinx.serialization would need keep rules, and the APK is small anyway.
             isMinifyEnabled = false

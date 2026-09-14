@@ -1,6 +1,11 @@
 package com.okan.beatblox.ui
 
 import android.app.Application
+import android.util.Patterns
+import com.okan.beatblox.BuildConfig
+import com.okan.beatblox.feedback.LogLine
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.okan.beatblox.engine.StrudelEngine
@@ -43,6 +48,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private val store = PatternStore(app)
     private val libraryStore = PatternLibrary(app)
     private val feedback = FeedbackClient(app)
+    val feedbackConfigured: Boolean get() = feedback.configured
 
     private val _root = MutableStateFlow(store.load() ?: defaultPattern())
     val root: StateFlow<Chain> = _root.asStateFlow()
@@ -80,7 +86,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private var pushedOnce = false
 
     init {
-        // Deliver feedback written while offline / before the server existed.
+        // Deliver feedback written while offline / before the hub key was configured.
         viewModelScope.launch { feedback.flush() }
         // Push the initial pattern once the engine comes up, without starting it.
         viewModelScope.launch {
@@ -386,15 +392,33 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- feedback -------------------------------------------------------------------
 
-    suspend fun sendFeedback(kind: FeedbackKind, message: String, contact: String?, attachPattern: Boolean): SendResult =
-        feedback.submit(
+    suspend fun sendFeedback(kind: FeedbackKind, message: String, contact: String?, attachPattern: Boolean): SendResult {
+        val dm = getApplication<Application>().resources.displayMetrics
+        val isEmail = contact != null && Patterns.EMAIL_ADDRESS.matcher(contact).matches()
+        val meta = buildJsonObject {
+            put("app_version_code", BuildConfig.VERSION_CODE)
+            put("strudel_version", STRUDEL_VERSION)
+            put("cpm", _cpm.value)
+            if (contact != null && !isEmail) put("contact", contact)
+            if (attachPattern) {
+                put("pattern_name", currentName.value)
+                put("pattern", Share.exportCode(_code.value, _cpm.value, currentName.value))
+            }
+        }
+        return feedback.submit(
             FeedbackReport(
-                kind = kind.wire,
+                type = kind.wire,
                 message = message,
-                contact = contact,
-                pattern = if (attachPattern) Share.exportCode(_code.value, _cpm.value, currentName.value) else null,
+                title = message.lineSequence().first().take(80),
+                userEmail = contact.takeIf { isEmail },
+                userId = feedback.installId,
+                // The engine log is the closest thing we have to a crash trail.
+                logs = engine.log.value.takeLast(200).map { LogLine(if (it.startsWith("error")) "error" else "info", it) },
+                metadata = meta,
+                screenSize = "${dm.widthPixels}x${dm.heightPixels}",
             ),
         )
+    }
 
     // --- push to engine -------------------------------------------------------------
 
