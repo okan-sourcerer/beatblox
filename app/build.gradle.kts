@@ -19,11 +19,11 @@ val keystoreProps = Properties().apply {
 fun urlProp(name: String): String = (project.findProperty(name) as String?).orEmpty()
 
 android {
-    namespace = "com.okan.strudelmobile"
+    namespace = "com.okan.beatblox"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.okan.strudelmobile"
+        applicationId = "com.okan.beatblox"
         minSdk = 26
         targetSdk = 37
         versionCode = 2

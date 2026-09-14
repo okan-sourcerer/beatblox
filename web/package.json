@@ -1,5 +1,5 @@
 {
-  "name": "strudel-mobile-web",
+  "name": "beatblox-web",
   "version": "1.0.0",
   "description": "Pulls the @strudel/web bundle into the Android app assets",
   "scripts": {

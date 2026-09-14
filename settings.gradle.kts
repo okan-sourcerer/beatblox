@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "StrudelMobile"
+rootProject.name = "BeatBlox"
 include(":app")

@@ -1,8 +1,8 @@
-# Strudel Mobile
+# BeatBlox
 
 Android (Kotlin/Compose) wrapper around [Strudel](https://strudel.cc) with a
 block-based pattern editor instead of typed code. See
-`strudel-mobile-wrapper-plan.md` for the full plan and design decisions.
+`plan.md` for the full plan and design decisions.
 
 ## Layout
 
@@ -43,7 +43,7 @@ block-based pattern editor instead of typed code. See
   first, then `FeedbackClient.flush()` POSTs each one as JSON to
   `BuildConfig.FEEDBACK_URL` (also retried at app start). With the URL empty —
   the current state, the server isn't up yet — nothing leaves the device and
-  the UI says so. Payload: `{project:"strudel-mobile", kind, message, contact?,
+  the UI says so. Payload: `{project:"beatblox", kind, message, contact?,
   pattern?, appVersion, appVersionCode, device, androidVersion, createdAt}`; a
   2xx response means delivered. To test against a server on the PC: `adb reverse
   tcp:9000 tcp:9000`, then `./gradlew installDebug -Pstrudel.feedbackUrl=http://127.0.0.1:9000/feedback`
