@@ -21,6 +21,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.okan.strudelmobile.model.Arg
 import com.okan.strudelmobile.model.MiniSource
-import com.okan.strudelmobile.model.Transform
 
 /**
  * The sample/sound browser: everything superdough registered (drum machines,
@@ -50,12 +52,23 @@ fun SoundBrowser(vm: EditorViewModel) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf("all") }
 
-    val filtered = remember(sounds, query, filter) {
+    // `.bank("X")` makes Strudel look up "x_<sound>", so with a bank set we
+    // list only that bank's sounds and insert the short names.
+    val bank = target?.transforms?.firstOrNull { it.fn == "bank" }?.args?.firstOrNull()?.let { (it as? Arg.Str)?.value }
+    val bankPrefix = bank?.lowercase()?.let { "${it}_" }
+    val banks = remember(sounds) {
+        sounds.mapNotNull { s -> s.name.substringBefore('_', "").takeIf { it.isNotEmpty() } }
+            .groupingBy { it }.eachCount().filterValues { it >= 4 }.keys.sorted()
+    }
+
+    val filtered = remember(sounds, query, filter, bankPrefix) {
         sounds.filter { s ->
-            (filter == "all" || (filter == "synth" && s.type != "sample") || (filter == "sample" && s.type == "sample")) &&
+            (bankPrefix == null || s.name.startsWith(bankPrefix)) &&
+                (filter == "all" || (filter == "synth" && s.type != "sample") || (filter == "sample" && s.type == "sample")) &&
                 (query.isBlank() || s.name.contains(query, ignoreCase = true))
         }
     }
+    fun shortName(name: String) = if (bankPrefix != null) name.removePrefix(bankPrefix) else name
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -78,12 +91,20 @@ fun SoundBrowser(vm: EditorViewModel) {
             is MiniSource -> if (s.fn == "s") "→ appends to the s block" else "→ sets .s() on the ${s.fn} block"
             else -> "select a block first"
         }
-        Text(
-            targetLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp),
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                targetLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            if (target != null && (target.source as MiniSource).fn == "s") {
+                BankChooser(current = bank, banks = banks) { vm.setBank(target.id, it) }
+            }
+        }
         HorizontalDivider()
         if (sounds.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -100,8 +121,8 @@ fun SoundBrowser(vm: EditorViewModel) {
                             val chain = target ?: return@clickable
                             val src = chain.source as MiniSource
                             if (src.fn == "s") {
-                                vm.appendToken(chain.id, s.name)
-                                vm.previewToken(chain.id, s.name)
+                                vm.appendToken(chain.id, shortName(s.name))
+                                vm.previewToken(chain.id, shortName(s.name))
                             } else {
                                 vm.setSoundTransform(chain.id, s.name)
                                 vm.previewChain(chain.id)
@@ -110,7 +131,7 @@ fun SoundBrowser(vm: EditorViewModel) {
                         .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(s.name, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
+                    Text(shortName(s.name), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
                     Text(
                         if (s.type == "sample") "${s.count} smp" else s.type,
                         style = MaterialTheme.typography.labelSmall,
@@ -121,6 +142,22 @@ fun SoundBrowser(vm: EditorViewModel) {
                         Icon(Icons.Default.PlayArrow, "Preview", tint = Mint)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BankChooser(current: String?, banks: List<String>, onPick: (String?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }) {
+            Text("bank: ${current ?: "none"} ▾", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(text = { Text("none") }, onClick = { open = false; onPick(null) })
+            banks.forEach { b ->
+                DropdownMenuItem(text = { Text(b, fontFamily = FontFamily.Monospace) }, onClick = { open = false; onPick(b) })
             }
         }
     }

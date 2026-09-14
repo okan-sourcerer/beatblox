@@ -132,8 +132,8 @@ private const val PanelHalfFraction = 0.32f
 private const val PanelFullFraction = 0.62f
 
 /**
- * The tool panel. Its height is user-controlled: drag the tab row, tap the
- * chevron to cycle collapsed / half / full, or tap the active tab to collapse.
+ * The tool panel. Its height is user-controlled: drag the tab row to resize,
+ * tap the chevron (or the active tab) to open/close.
  */
 @Composable
 private fun BottomPanel(panel: Panel, vm: EditorViewModel, modifier: Modifier = Modifier) {
@@ -145,12 +145,10 @@ private fun BottomPanel(panel: Panel, vm: EditorViewModel, modifier: Modifier = 
     val height by animateDpAsState(target.dp, label = "panelHeight")
     val collapsed = target <= PanelCollapsed + 1f
 
+    // Chevron / active-tab tap: open ↔ closed. Any height up to `full` is
+    // reachable by dragging the tab row.
     fun cycle() {
-        target = when {
-            target < half - 1f -> half
-            target < full - 1f -> full
-            else -> PanelCollapsed
-        }
+        target = if (collapsed) half else PanelCollapsed
     }
 
     Column(modifier.fillMaxWidth()) {
@@ -174,7 +172,7 @@ private fun BottomPanel(panel: Panel, vm: EditorViewModel, modifier: Modifier = 
             }
             IconButton(onClick = ::cycle) {
                 Icon(
-                    if (target >= full - 1f) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                    if (collapsed) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     "Resize panel",
                 )
             }

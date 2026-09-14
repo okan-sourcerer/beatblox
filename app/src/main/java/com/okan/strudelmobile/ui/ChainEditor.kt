@@ -16,10 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.DropdownMenu
@@ -39,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -101,13 +101,18 @@ fun ChainEditor(
             )
         }
 
-        chain.transforms.forEachIndexed { i, t ->
-            Spacer(Modifier.height(6.dp))
+        if (chain.transforms.isNotEmpty()) Spacer(Modifier.height(6.dp))
+        ReorderableColumn(
+            items = chain.transforms,
+            key = { it.id },
+            onMove = { id, delta -> vm.moveTransform(id, delta) },
+            spacing = 6.dp,
+        ) { t, handle, dragging ->
             TransformBlock(
                 transform = t,
                 selected = (selection as? Selection.Block)?.transformId == t.id,
-                canMoveUp = i > 0,
-                canMoveDown = i < chain.transforms.lastIndex,
+                dragging = dragging,
+                handle = handle,
                 vm = vm,
             )
         }
@@ -157,7 +162,10 @@ private fun MiniSourceBlock(
         OutlinedTextField(
             value = src.pattern,
             onValueChange = { vm.setPattern(chain.id, it) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                // The field swallows the tap, so select the block on focus instead.
+                .onFocusChanged { if (it.isFocused) vm.select(Selection.Source(chain.id)) },
             textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = MaterialTheme.typography.bodyLarge.fontSize),
             singleLine = true,
             visualTransformation = HighlightTransformation(activeTokens),
@@ -235,16 +243,27 @@ private fun GroupBlock(
             }
         }
         Spacer(Modifier.height(6.dp))
-        src.children.forEachIndexed { i, child ->
-            Row(Modifier.fillMaxWidth()) {
+        ReorderableColumn(
+            items = src.children,
+            key = { it.id },
+            onMove = { id, delta -> vm.moveLayer(chain.id, id, delta) },
+        ) { child, handle, dragging ->
+            val i = src.children.indexOf(child)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (dragging) InkRaised else Color.Transparent, BlockShape),
+            ) {
+                // The layer's grab handle.
                 Box(
                     Modifier
-                        .width(3.dp)
-                        .height(24.dp)
+                        .width(28.dp)
                         .padding(top = 8.dp)
-                        .background(Coral.copy(alpha = 0.5f)),
-                )
-                Spacer(Modifier.width(8.dp))
+                        .then(handle),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    Icon(Icons.Default.DragIndicator, "Drag layer", tint = Coral.copy(alpha = 0.8f))
+                }
                 Column(Modifier.weight(1f)) {
                     ChainEditor(
                         chain = child,
@@ -271,22 +290,28 @@ private fun GroupBlock(
 private fun TransformBlock(
     transform: Transform,
     selected: Boolean,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
+    dragging: Boolean,
+    handle: Modifier,
     vm: EditorViewModel,
 ) {
     val spec = Vocabulary.spec(transform.fn)
     val color = categoryColor(spec?.category)
+    val border = when {
+        dragging -> Amber
+        selected -> Sky
+        else -> MaterialTheme.colorScheme.outline
+    }
     Row(
         Modifier
             .fillMaxWidth()
             .clip(BlockShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(if (selected) 2.dp else 1.dp, if (selected) Sky else MaterialTheme.colorScheme.outline, BlockShape)
+            .background(if (dragging) InkLine else MaterialTheme.colorScheme.surfaceVariant)
+            .border(if (selected || dragging) 2.dp else 1.dp, border, BlockShape)
             .clickable { vm.select(Selection.Block(transform.id)) }
-            .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        DragHandle(handle)
         Box(
             Modifier
                 .size(10.dp)
@@ -308,12 +333,6 @@ private fun TransformBlock(
             modifier = Modifier.weight(1f),
             maxLines = 1,
         )
-        IconButton(onClick = { vm.moveTransform(transform.id, -1) }, enabled = canMoveUp, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.ArrowUpward, "Move up")
-        }
-        IconButton(onClick = { vm.moveTransform(transform.id, +1) }, enabled = canMoveDown, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.ArrowDownward, "Move down")
-        }
         IconButton(onClick = { vm.removeTransform(transform.id) }, modifier = Modifier.size(32.dp)) {
             Icon(Icons.Default.Close, "Remove", tint = Coral)
         }
@@ -337,6 +356,16 @@ fun categoryColor(c: FunctionSpec.Category?): Color = when (c) {
 }
 
 // --- shared bits --------------------------------------------------------------
+
+@Composable
+private fun DragHandle(handle: Modifier) {
+    Icon(
+        Icons.Default.DragIndicator,
+        "Drag to reorder",
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(32.dp).then(handle).padding(4.dp),
+    )
+}
 
 @Composable
 private fun FnChooser(current: String, options: List<String>, color: Color, onPick: (String) -> Unit) {

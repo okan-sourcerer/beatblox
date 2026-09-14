@@ -204,6 +204,17 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         else TreeOps.addTransform(root, chainId, Transform(fn = "s", args = listOf(Arg.Str(sound))))
     }
 
+    /** Set, replace or (with null) remove the chain's `.bank()` block. */
+    fun setBank(chainId: String, bank: String?) = edit(immediate = true) { root ->
+        val chain = TreeOps.find(root, chainId) ?: return@edit root
+        val existing = chain.transforms.firstOrNull { it.fn == "bank" }
+        when {
+            bank == null -> if (existing != null) TreeOps.removeTransform(root, existing.id) else root
+            existing != null -> TreeOps.setArg(root, existing.id, 0, Arg.Str(bank))
+            else -> TreeOps.addTransform(root, chainId, Transform(fn = "bank", args = listOf(Arg.Str(bank))))
+        }
+    }
+
     fun removeTransform(transformId: String) {
         edit(immediate = true) { TreeOps.removeTransform(it, transformId) }
         if ((_selection.value as? Selection.Block)?.transformId == transformId) _selection.value = Selection.None
