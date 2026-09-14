@@ -24,6 +24,13 @@ class PatternStore(context: Context) {
         prefs.edit().putString(KEY_TREE, json.encodeToString(root)).apply()
     }
 
+    /** Id of the library entry the working pattern was loaded from / saved to, if any. */
+    fun loadCurrentId(): String? = prefs.getString(KEY_CURRENT, null)
+
+    fun saveCurrentId(id: String?) {
+        prefs.edit().putString(KEY_CURRENT, id).apply()
+    }
+
     fun loadCpm(default: Double): Double = prefs.getFloat(KEY_CPM, default.toFloat()).toDouble()
 
     fun saveCpm(cpm: Double) {
@@ -34,5 +41,6 @@ class PatternStore(context: Context) {
         const val TAG = "PatternStore"
         const val KEY_TREE = "tree"
         const val KEY_CPM = "cpm"
+        const val KEY_CURRENT = "currentId"
     }
 }

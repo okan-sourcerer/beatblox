@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
@@ -59,6 +60,8 @@ fun StrudelApp(vm: EditorViewModel) {
     val cpm by vm.cpm.collectAsStateWithLifecycle()
     val canUndo by vm.canUndo.collectAsStateWithLifecycle()
     val canRedo by vm.canRedo.collectAsStateWithLifecycle()
+    val patternName by vm.currentName.collectAsStateWithLifecycle()
+    var showLibrary by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(error) {
         if (error != null) {
@@ -81,6 +84,8 @@ fun StrudelApp(vm: EditorViewModel) {
                 ready = ready,
                 playing = playing,
                 cpm = cpm,
+                patternName = patternName,
+                onLibrary = { showLibrary = true },
                 canUndo = canUndo,
                 canRedo = canRedo,
                 onUndo = vm::undo,
@@ -112,6 +117,10 @@ fun StrudelApp(vm: EditorViewModel) {
 
             HorizontalDivider()
             BottomPanel(panel, vm)
+        }
+
+        if (showLibrary) {
+            LibrarySheet(vm, onDismiss = { showLibrary = false })
         }
 
         if (error != null) {

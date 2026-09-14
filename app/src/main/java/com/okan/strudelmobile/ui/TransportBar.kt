@@ -1,5 +1,6 @@
 package com.okan.strudelmobile.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Stop
@@ -39,6 +41,8 @@ fun TransportBar(
     ready: Boolean,
     playing: Boolean,
     cpm: Double,
+    patternName: String?,
+    onLibrary: () -> Unit,
     canUndo: Boolean,
     canRedo: Boolean,
     onUndo: () -> Unit,
@@ -70,6 +74,7 @@ fun TransportBar(
             }
             IconButton(onClick = onHush) { Icon(Icons.Default.VolumeOff, "Hush") }
             IconButton(onClick = onReset) { Icon(Icons.Default.RestartAlt, "Reset pattern") }
+            IconButton(onClick = onLibrary) { Icon(Icons.Default.LibraryMusic, "Patterns") }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onUndo, enabled = canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, "Undo") }
             IconButton(onClick = onRedo, enabled = canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, "Redo") }
@@ -82,6 +87,13 @@ fun TransportBar(
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(72.dp),
+                )
+                Text(
+                    patternName ?: "unsaved",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (patternName != null) Amber else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.width(96.dp).clickable(onClick = onLibrary),
                 )
                 Slider(
                     value = dragCpm,
