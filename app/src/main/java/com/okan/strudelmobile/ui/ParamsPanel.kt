@@ -106,9 +106,13 @@ fun ParamsPanel(vm: EditorViewModel) {
                 is ParamSpec.Choice -> ChoiceParam(param, (arg as? Arg.Str)?.value ?: param.default) {
                     vm.setArgFinal(transform.id, index, Arg.Str(it))
                 }
-                is ParamSpec.Text -> TextParam(param, (arg as? Arg.Str)?.value ?: param.default) {
-                    vm.setArg(transform.id, index, Arg.Str(it))
-                }
+                is ParamSpec.Text -> TextParam(
+                    param = param,
+                    value = (arg as? Arg.Str)?.value ?: param.default,
+                    vm = vm,
+                    onChange = { vm.setArg(transform.id, index, Arg.Str(it)) },
+                    onPick = { vm.setArgFinal(transform.id, index, Arg.Str(it)) },
+                )
             }
         }
     }
@@ -185,13 +189,59 @@ private fun ChoiceParam(param: ParamSpec.Choice, value: String, onPick: (String)
 }
 
 @Composable
-private fun TextParam(param: ParamSpec.Text, value: String, onChange: (String) -> Unit) {
+private fun TextParam(
+    param: ParamSpec.Text,
+    value: String,
+    vm: EditorViewModel,
+    onChange: (String) -> Unit,
+    onPick: (String) -> Unit,
+) {
+    val sounds by vm.engine.sounds.collectAsStateWithLifecycle()
+    when (param.kind) {
+        ParamSpec.TextKind.SOUND -> {
+            Text(param.name, style = MaterialTheme.typography.labelLarge)
+            SoundPicker(sounds = sounds, current = value, onPick = onPick, onPreview = { vm.previewSound(it) })
+            return
+        }
+        ParamSpec.TextKind.BANK -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(param.name, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                BankChooser(current = value, banks = remember(sounds) { bankNames(sounds) }) { onPick(it ?: "") }
+            }
+            SmallHint("Sound names in this chain (bd, sd, hh…) are taken from this machine. Use the Sounds tab to see them.")
+            return
+        }
+        ParamSpec.TextKind.NOTE_NAME -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(param.name, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                NoteDropdown(current = value, onPick = onPick)
+            }
+            return
+        }
+        ParamSpec.TextKind.SAMPLE_INDEX -> {
+            // Show the valid indices for the chain's current sound.
+            val chain = vm.targetChain()
+            val soundName = chain?.transforms?.firstOrNull { it.fn == "s" }?.args?.firstOrNull()?.let { (it as? Arg.Str)?.value }
+                ?: (chain?.source as? com.okan.strudelmobile.model.MiniSource)?.takeIf { it.fn == "s" }?.pattern?.trim()?.split(" ")?.firstOrNull()
+            val count = sounds.firstOrNull { it.name == soundName }?.count
+            if (soundName != null && count != null) {
+                SmallHint("\"$soundName\" has $count sample${if (count == 1) "" else "s"}: valid indices 0…${count - 1}")
+                PresetChips(presets = (0 until count.coerceAtMost(16)).map { it.toString() }, current = value, onPick = onPick)
+            } else {
+                SmallHint("Sample number inside the sound (0 = first). With a .scale() block: the scale degree.")
+            }
+        }
+        ParamSpec.TextKind.MINI -> Unit
+    }
+    if (param.presets.isNotEmpty()) PresetChips(presets = param.presets, current = value, onPick = onPick)
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(param.name) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
+        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace),
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false),
     )
+    if (param.isMini) SmallHint("mini-notation: space = steps, ~ = rest, <a b> = alternate per cycle, a*2 = repeat. See ? for more.")
 }

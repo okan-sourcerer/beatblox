@@ -23,9 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,10 +57,7 @@ fun SoundBrowser(vm: EditorViewModel) {
     // list only that bank's sounds and insert the short names.
     val bank = target?.transforms?.firstOrNull { it.fn == "bank" }?.args?.firstOrNull()?.let { (it as? Arg.Str)?.value }
     val bankPrefix = bank?.lowercase()?.let { "${it}_" }
-    val banks = remember(sounds) {
-        sounds.mapNotNull { s -> s.name.substringBefore('_', "").takeIf { it.isNotEmpty() } }
-            .groupingBy { it }.eachCount().filterValues { it >= 4 }.keys.sorted()
-    }
+    val banks = remember(sounds) { bankNames(sounds) }
 
     // Describe once per sound list; the search also matches description text.
     val described = remember(sounds) { sounds.map { it to SoundDescriptions.describe(it.name, it.type) } }
@@ -175,35 +169,6 @@ fun SoundBrowser(vm: EditorViewModel) {
                         Icon(Icons.Default.PlayArrow, "Preview", tint = Mint)
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BankChooser(current: String?, banks: List<String>, onPick: (String?) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        TextButton(onClick = { open = true }) {
-            Text("bank: ${current ?: "none"} ▾", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text("none — plain sound names") }, onClick = { open = false; onPick(null) })
-            banks.forEach { b ->
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(b, fontFamily = FontFamily.Monospace)
-                            Text(
-                                SoundDescriptions.describeBank(b),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                            )
-                        }
-                    },
-                    onClick = { open = false; onPick(b) },
-                )
             }
         }
     }

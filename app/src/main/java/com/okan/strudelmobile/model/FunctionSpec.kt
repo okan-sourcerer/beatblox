@@ -15,7 +15,17 @@ sealed interface ParamSpec {
         val default: Double,
     ) : ParamSpec
 
-    data class Text(override val name: String, val default: String, val isMini: Boolean = true) : ParamSpec
+    data class Text(
+        override val name: String,
+        val default: String,
+        val isMini: Boolean = true,
+        /** Which picker the Params panel shows for this field. */
+        val kind: TextKind = TextKind.MINI,
+        /** Tappable suggestions shown above the field. */
+        val presets: List<String> = emptyList(),
+    ) : ParamSpec
+
+    enum class TextKind { MINI, SOUND, BANK, NOTE_NAME, SAMPLE_INDEX }
 
     data class Choice(override val name: String, val options: List<String>, val default: String) : ParamSpec
 
@@ -90,17 +100,17 @@ object Vocabulary {
         FunctionSpec("slow", "slow", FunctionSpec.Category.TIME, listOf(ParamSpec.Number("factor", 0.25, 8.0, 0.25, 2.0)), description = "Slows the pattern down: slow(2) stretches it over two cycles."),
         FunctionSpec("rev", "reverse", FunctionSpec.Category.TIME, description = "Plays each cycle backwards."),
         FunctionSpec("late", "late", FunctionSpec.Category.TIME, listOf(ParamSpec.Number("cycles", 0.0, 1.0, 0.125, 0.25)), description = "Shifts the pattern later in time by a fraction of a cycle (0.25 = a quarter cycle)."),
-        FunctionSpec("struct", "struct", FunctionSpec.Category.STRUCTURE, listOf(ParamSpec.Text("pattern", "x ~ x x")), description = "Imposes a rhythm: \"x ~ x x\" plays the sound on the x steps and rests on ~."),
+        FunctionSpec("struct", "struct", FunctionSpec.Category.STRUCTURE, listOf(ParamSpec.Text("pattern", "x ~ x x", presets = listOf("x ~ x x", "x*4", "x*8", "x(3,8)", "x(5,8)", "x ~ ~ x ~ x ~ ~", "~ x", "[x x] ~ x ~", "x ~ x ~ x x ~ x"))), description = "Imposes a rhythm: \"x ~ x x\" plays the sound on the x steps and rests on ~."),
         FunctionSpec("degradeBy", "degrade", FunctionSpec.Category.STRUCTURE, listOf(ParamSpec.Number("amount", 0.0, 1.0, 0.05, 0.5)), description = "Randomly drops events. 0.5 removes about half of them each cycle."),
         FunctionSpec("ply", "ply", FunctionSpec.Category.STRUCTURE, listOf(ParamSpec.Number("times", 1.0, 8.0, 1.0, 2.0)), description = "Repeats every event N times in place, like a fast roll."),
 
-        FunctionSpec("s", "sound", FunctionSpec.Category.SOUND, listOf(ParamSpec.Text("sound", "piano")), description = "Which sound/sample plays the notes. Pick from the Sounds tab."),
-        FunctionSpec("bank", "bank", FunctionSpec.Category.SOUND, listOf(ParamSpec.Text("bank", "RolandTR909", isMini = false)), description = "Drum machine to take bd/sd/hh… from, e.g. RolandTR909. Sounds are looked up as bank_sound."),
-        FunctionSpec("n", "sample #", FunctionSpec.Category.SOUND, listOf(ParamSpec.Text("index", "0")), description = "Which sample number inside a sound (0 = first). With a scale, it is the scale degree instead."),
+        FunctionSpec("s", "sound", FunctionSpec.Category.SOUND, listOf(ParamSpec.Text("sound", "piano", kind = ParamSpec.TextKind.SOUND)), description = "Which sound/sample plays the notes. Pick from the Sounds tab."),
+        FunctionSpec("bank", "bank", FunctionSpec.Category.SOUND, listOf(ParamSpec.Text("bank", "RolandTR909", isMini = false, kind = ParamSpec.TextKind.BANK)), description = "Drum machine to take bd/sd/hh… from, e.g. RolandTR909. Sounds are looked up as bank_sound."),
+        FunctionSpec("n", "sample #", FunctionSpec.Category.SOUND, listOf(ParamSpec.Text("index", "0", kind = ParamSpec.TextKind.SAMPLE_INDEX, presets = listOf("0", "0 1 2 3", "<0 1 2 3>", "0 .. 7", "<0 1>*2"))), description = "Which sample number inside a sound (0 = first). With a scale, it is the scale degree instead."),
         FunctionSpec("speed", "speed", FunctionSpec.Category.SOUND, listOf(ParamSpec.Number("speed", -2.0, 2.0, 0.05, 1.0)), description = "Playback speed of samples: 2 = double speed & pitch, 0.5 = half, negative = reversed."),
         FunctionSpec("crush", "bitcrush", FunctionSpec.Category.SOUND, listOf(ParamSpec.Number("bits", 1.0, 16.0, 1.0, 8.0)), description = "Bitcrusher: fewer bits = more digital grit. 16 is clean, 4 is destroyed."),
 
-        FunctionSpec("note", "note", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("notes", "c3")), description = "Sets the pitch as note names (c3, eb4…) or MIDI numbers."),
+        FunctionSpec("note", "note", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("notes", "c3", presets = listOf("c3", "c3 e3 g3", "<c3 e3 g3 b3>", "c3 eb3 g3 bb3", "[c3,e3,g3]", "c2 c2 g2 c3"))), description = "Sets the pitch as note names (c3, eb4…) or MIDI numbers."),
         FunctionSpec("scale", "scale", FunctionSpec.Category.PITCH, listOf(ParamSpec.Choice("scale", scales, "C:major")), description = "Maps n() numbers onto a musical scale, so 0 1 2 3 are always in key."),
         FunctionSpec("transpose", "transpose", FunctionSpec.Category.PITCH, listOf(ParamSpec.Number("semitones", -24.0, 24.0, 1.0, 12.0)), description = "Shifts pitch by semitones: 12 = one octave up, -12 = one octave down."),
 
@@ -168,7 +178,7 @@ object Vocabulary {
         FunctionSpec("add", "add", FunctionSpec.Category.PITCH, listOf(ParamSpec.Number("amount", -24.0, 24.0, 1.0, 12.0)), description = "Adds to the note/n value: 12 = an octave up, 7 = a fifth up, -12 = an octave down."),
         FunctionSpec("scaleTranspose", "scale transpose", FunctionSpec.Category.PITCH, listOf(ParamSpec.Number("steps", -7.0, 7.0, 1.0, 2.0)), description = "Moves notes by scale steps (needs a scale block), staying in key."),
         FunctionSpec("detune", "detune", FunctionSpec.Category.PITCH, listOf(ParamSpec.Number("amount", 0.0, 1.0, 0.01, 0.1)), description = "Slightly detunes synth voices for a thicker, chorused sound."),
-        FunctionSpec("arp", "arpeggio", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("order", "0 1 2 3")), description = "Turns simultaneous notes (chords like \"[c3,e3,g3]\") into a sequence in this order."),
+        FunctionSpec("arp", "arpeggio", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("order", "0 1 2 3", presets = listOf("0 1 2 3", "3 2 1 0", "0 2 1 3", "0 1 2 3 2 1", "<0 2> <1 3>", "0 [1 2] 3 [2 1]"))), description = "Turns simultaneous notes (chords like \"[c3,e3,g3]\") into a sequence in this order."),
 
         // --- more filter ---
         FunctionSpec("lpq", "low-pass resonance", FunctionSpec.Category.FILTER, listOf(ParamSpec.Number("q", 0.0, 30.0, 0.5, 5.0)), description = "Resonance of the low-pass filter: boosts the cutoff frequency — acid squelch."),
@@ -184,9 +194,9 @@ object Vocabulary {
         FunctionSpec("orbit", "orbit", FunctionSpec.Category.SPACE, listOf(ParamSpec.Number("bus", 1.0, 4.0, 1.0, 2.0)), description = "Effects bus: layers on different orbits get separate reverb/delay instead of sharing one."),
 
         // --- chords ---
-        FunctionSpec("chord", "chord", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("symbols", "<C^7 Am7 Dm7 G7>")), description = "Chord symbols per step. On an n chain, n picks notes out of each chord. Needs .voicing() after it."),
+        FunctionSpec("chord", "chord", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("symbols", "<C^7 Am7 Dm7 G7>", presets = listOf("<C^7 Am7 Dm7 G7>", "<Am7 Dm7 G7 C^7>", "<F^7 G7 Em7 Am7>", "<Cm7 Fm7 Bb7 Eb^7>", "<C Am F G>", "<Dm7 G7 C^7 C^7>"))), description = "Chord symbols per step. On an n chain, n picks notes out of each chord. Needs .voicing() after it."),
         FunctionSpec("voicing", "voicing", FunctionSpec.Category.PITCH, description = "Turns chord symbols into actual notes, choosing smooth voice-leading between chords."),
-        FunctionSpec("anchor", "anchor", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("note", "c5", isMini = false)), description = "Where voicings sit: the top note stays at or below this (default c5). Put it before .voicing()."),
+        FunctionSpec("anchor", "anchor", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("note", "c5", isMini = false, kind = ParamSpec.TextKind.NOTE_NAME)), description = "Where voicings sit: the top note stays at or below this (default c5). Put it before .voicing()."),
         FunctionSpec("mode", "voicing mode", FunctionSpec.Category.PITCH, listOf(ParamSpec.Choice("mode", listOf("below", "above", "duck", "root"), "below")), description = "How voicings relate to the anchor: below/above it, duck (avoid it), or root (anchor is the bass note)."),
 
         // --- layer ---
