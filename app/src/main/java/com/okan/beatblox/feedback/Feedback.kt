@@ -64,7 +64,7 @@ sealed interface SendResult {
 
 /**
  * Feedback goes into a small on-device outbox first, then the outbox is
- * flushed to the hub. With no API key baked in (`strudel.hubKey` empty)
+ * flushed to the hub. With no API key baked in (`beatblox.hubKey` empty)
  * nothing leaves the device — reports accumulate and are delivered by the
  * first build that has the key. Each report carries its own idempotency key,
  * so a retry after a lost response can't create a duplicate.

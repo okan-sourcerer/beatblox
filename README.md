@@ -46,7 +46,7 @@ block-based pattern editor instead of typed code. See
   (on submit and at app start); every report carries its own
   `idempotency_key`, so retries can't duplicate. 2xx = delivered, 401/422 =
   dropped (would never succeed), anything else = kept for retry. With
-  `strudel.hubKey` empty nothing leaves the device and the UI says so.
+  `beatblox.hubKey` empty nothing leaves the device and the UI says so.
   Sent: type, message, title, optional email, per-install `user_id`,
   app/OS/device/locale/timezone/screen, the engine log (≤200 lines) and
   `metadata{pattern, pattern_name, cpm, strudel_version, app_version_code}`.
@@ -71,9 +71,9 @@ block-based pattern editor instead of typed code. See
    keyPassword=...
    ```
 3. Set the deployment URLs (in `gradle.properties`, `~/.gradle/gradle.properties`, or `-P`):
-   `strudel.hubKey` (the hub's per-app API key — keep it in
-   `~/.gradle/gradle.properties`, not in the repo), `strudel.sourceUrl`,
-   `strudel.downloadUrl`. Empty URLs hide the corresponding link; an empty key
+   `beatblox.hubKey` (the hub's per-app API key — keep it in
+   `~/.gradle/gradle.properties`, not in the repo), `beatblox.sourceUrl`,
+   `beatblox.downloadUrl`. Empty URLs hide the corresponding link; an empty key
    keeps feedback queued on the device.
 4. `./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
    Bump `versionCode`/`versionName` in `app/build.gradle.kts` for every upload.
@@ -83,7 +83,7 @@ block-based pattern editor instead of typed code. See
 Copyright (C) 2026 Okan Tanrıverdi (okan-sourcerer). AGPL-3.0-or-later — see `LICENSE`
 (full text) and `NOTICE` (copyright + third-party credits). The app bundles
 Strudel, which is AGPL, so the app is too. Hosting the APK for download means
-also offering the source; point `strudel.sourceUrl` at this repository.
+also offering the source; point `beatblox.sourceUrl` at this repository.
 
 Debugging the JS side in a desktop browser: `npx http-server app/src/main/assets/strudel -p 8765`
 and open it — without `window.Android` the bridge logs callbacks to the console.

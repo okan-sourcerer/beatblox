@@ -30,10 +30,10 @@ android {
         versionCode = 2
         versionName = "0.2.0"
 
-        buildConfigField("String", "HUB_URL", "\"${urlProp("strudel.hubUrl").ifBlank { "https://coreworkbench.com" }}\"")
-        buildConfigField("String", "HUB_KEY", "\"${urlProp("strudel.hubKey")}\"")
-        buildConfigField("String", "SOURCE_URL", "\"${urlProp("strudel.sourceUrl")}\"")
-        buildConfigField("String", "DOWNLOAD_URL", "\"${urlProp("strudel.downloadUrl")}\"")
+        buildConfigField("String", "HUB_URL", "\"${urlProp("beatblox.hubUrl").ifBlank { "https://coreworkbench.com" }}\"")
+        buildConfigField("String", "HUB_KEY", "\"${urlProp("beatblox.hubKey")}\"")
+        buildConfigField("String", "SOURCE_URL", "\"${urlProp("beatblox.sourceUrl")}\"")
+        buildConfigField("String", "DOWNLOAD_URL", "\"${urlProp("beatblox.downloadUrl")}\"")
     }
 
     signingConfigs {
