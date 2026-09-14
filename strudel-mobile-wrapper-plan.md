@@ -1,5 +1,8 @@
 # Strudel Mobile Wrapper — Project Plan
 
+> **Status (2026-09-14): v1 is done.** Every phase below shipped (marked ✅), plus
+> a few things the plan didn't ask for. What's left is in "Next" at the bottom.
+
 ## Context
 
 I'm an Android developer (Kotlin/Compose, also work in Java/Spring Boot day-to-day, some Godot/C#). I want to build an Android app that wraps [Strudel](https://strudel.cc) — the browser-based live-coding music tool (a JS port of TidalCycles) — with a native Compose control layer, instead of making users type pattern code by hand.
@@ -26,34 +29,55 @@ I'm an Android developer (Kotlin/Compose, also work in Java/Spring Boot day-to-d
 
 ## Phased build plan
 
-### Phase 0 — Spike: prove the shell works (1-3 days)
+### ✅ Phase 0 — Spike: prove the shell works
 Single local HTML file bundling `@strudel/web` in a WebView. Confirm from Kotlin that `evaluateJavascript` can set and play a hardcoded pattern, and stop it. De-risks the architecture before investing in UI.
 
-### Phase 1 — Transport
+### ✅ Phase 1 — Transport
 Wire Compose start/stop/hush buttons to the JS calls exposed by `@strudel/web`.
 
-### Phase 2 — Pattern data model (foundation — get this right before building UI on top)
+### ✅ Phase 2 — Pattern data model
 A Kotlin tree: each node is a function call (name + params + children, to represent `stack()`/sequence groups). This tree is the single source of truth; it gets serialized to a Strudel code string for playback. Start with a small function vocabulary (`s`, `note`/`n`, `stack`, sequence, `.fast`/`.slow`, `.gain`, `.room`, `.lpf`, `.scale`) and expand later. Getting this model right is more important than any individual screen — chaining, note preview, and highlighting all depend on it.
 
-### Phase 3 — Chaining UI
+### ✅ Phase 3 — Chaining UI
 Vertical block-list over the tree: add/remove/reorder function-call blocks, edit params inline. Reordering regenerates the tree → code string → pushed to WebView.
 
-### Phase 4 — Note input
+### ✅ Phase 4 — Note input
 Piano-style picker component that inserts a note token into the currently-selected chain node.
 
 **→ Milestone: Phases 0-4 together are the first real demo (start/stop + block chaining + note picking, end to end). Build and use this before starting Phase 5/6 — the remaining phases have real design uncertainty that's easier to resolve once the basic loop is in hand.**
 
-### Phase 5 — Isolated note/node preview
+### ✅ Phase 5 — Isolated note/node preview
 Take the selected leaf node plus its ancestor chain, serialize *that subtree alone* into a standalone one-shot expression, and trigger it via Strudel's one-shot playback (independent of whatever the main transport is doing). See the tentative sibling-exclusion decision above.
 
-### Phase 6 — Step highlighting on native UI
+### ✅ Phase 6 — Step highlighting on native UI
 Hook Strudel's event/hap scheduler for per-event callbacks. Bridge a minimal payload (which node ID is currently sounding — not audio data) back to Kotlin via a JS interface, throttled, and update Compose highlight state from that. This is the one spot where a chatty bridge could cause real jank — keep payloads tiny.
 
-### Phase 7 — Desktop tool parity (selective)
+### ✅ Phase 7 — Desktop tool parity (selective)
 Port the highest-value pieces of Strudel desktop's panel first: sound/sample browser, then a params helper bound to the selected node. Don't attempt full parity in v1.
 
-## Open questions to resolve during implementation
+### ✅ Beyond the plan (shipped alongside)
 
-- Exact JS API surface `@strudel/web` exposes for: setting/hot-swapping a pattern, one-shot triggering, and per-event/hap callbacks (needs checking against current Strudel docs/source — may have changed since this plan was written).
-- How much of the block vocabulary (Phase 2) is enough for a "real" demo vs. how much can wait.
-- Whether one-shot preview playback can run concurrently with the main transport without audio glitching (untested assumption).
+- Pattern persists across restarts; undo/redo; named pattern library (save / save as / load / rename / delete)
+- Drag-to-reorder blocks and layers; bank-aware sound browser
+- Vocabulary grew to ~50 blocks incl. function-valued args, chords (`chord` source + voicing/anchor/mode), variadic `layer()`
+- Plain-language descriptions for sounds/banks/blocks, help sheet, pickers for every text parameter
+- Samples preloaded before a pattern plays (fixes the dropped first press), loading indicator
+- Share/export: code with `setcpm()` header, system share, `strudel.cc/#…` link
+- About/credits (Strudel, TidalCycles, sample banks; AGPL notice), feedback form with on-device outbox → JSON POST to a configurable server
+- Release build plumbing: `keystore.properties` signing, BuildConfig URLs, `LICENSE` (AGPL-3.0)
+
+## Open questions — resolved
+
+- **`@strudel/web` API surface:** `repl.evaluate` hot-swaps the pattern; `pattern.onTrigger(fn, false)` gives per-hap callbacks with `hap.context.locations`; `superdough(value, onset, dur, cps, begin)` does one-shot playback. All in `bridge.js`.
+- **Vocabulary size:** the initial handful was enough for the demo; it grew to ~50 blocks once the model proved itself.
+- **Preview concurrent with transport:** works without glitching — preview renders straight through `superdough` on the same AudioContext, independent of the scheduler.
+- **Sibling exclusion in preview (the tentative one):** kept. Not revisited yet with real use — see "Next".
+
+## Next (when there's time)
+
+1. **Use it.** Play with it on the phone for a while and fix what annoys. Specifically decide whether sibling-excluded preview is right.
+2. **Hosting:** set `strudel.sourceUrl` / `strudel.downloadUrl` / `strudel.feedbackUrl`, generate the release key, publish APK + source (AGPL requires the source to be offered).
+3. **Feedback server:** the app already POSTs `{project:"strudel-mobile", kind, message, contact?, pattern?, appVersion, appVersionCode, device, androidVersion, createdAt}`; any 2xx = delivered. Reports written before the URL was set are queued on-device and flushed on next launch.
+4. **Tests:** only `SerializerTest` exists. `TreeOps` (edits, reorder, undo) and the bridge's location-table → chainId mapping are the two most likely silent regressions.
+5. **Background audio** — the deferred v1 follow-up: foreground service + keep the WebView attached. Biggest remaining user-facing gap; OEM-fiddly (Honor especially), so do it last.
+6. **Import:** the app can export code but not read it back. A mini parser for the app's own output subset would let patterns move between users/devices.
