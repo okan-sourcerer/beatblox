@@ -62,6 +62,7 @@ fun StrudelApp(vm: EditorViewModel) {
     val canRedo by vm.canRedo.collectAsStateWithLifecycle()
     val patternName by vm.currentName.collectAsStateWithLifecycle()
     var showLibrary by rememberSaveable { mutableStateOf(false) }
+    var showHelp by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(error) {
         if (error != null) {
@@ -86,6 +87,7 @@ fun StrudelApp(vm: EditorViewModel) {
                 cpm = cpm,
                 patternName = patternName,
                 onLibrary = { showLibrary = true },
+                onHelp = { showHelp = true },
                 canUndo = canUndo,
                 canRedo = canRedo,
                 onUndo = vm::undo,
@@ -121,6 +123,9 @@ fun StrudelApp(vm: EditorViewModel) {
 
         if (showLibrary) {
             LibrarySheet(vm, onDismiss = { showLibrary = false })
+        }
+        if (showHelp) {
+            HelpSheet(onDismiss = { showHelp = false })
         }
 
         if (error != null) {

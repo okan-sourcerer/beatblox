@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.okan.strudelmobile.model.Arg
 import com.okan.strudelmobile.model.ParamSpec
 import com.okan.strudelmobile.model.Serializer
+import com.okan.strudelmobile.model.SoundDescriptions
 import com.okan.strudelmobile.model.Vocabulary
 import kotlin.math.roundToInt
 
@@ -67,9 +68,18 @@ fun ParamsPanel(vm: EditorViewModel) {
                 if (chain != null) vm.previewChain(chain.id)
             }) { Text("▶ preview chain") }
         }
+        if (spec != null && spec.description.isNotEmpty()) {
+            Text(spec.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (spec == null || spec.params.isEmpty()) {
             Text("No parameters.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             return
+        }
+        // Explain what the current sound / bank actually is.
+        if (transform.fn == "s" || transform.fn == "bank") {
+            val value = (transform.args.firstOrNull() as? Arg.Str)?.value.orEmpty()
+            val info = if (transform.fn == "bank") SoundDescriptions.describeBank(value) else SoundDescriptions.describe(value, "sample").text
+            if (value.isNotBlank()) Text(info, style = MaterialTheme.typography.labelSmall, color = Amber)
         }
         spec.params.forEachIndexed { index, param ->
             Spacer(Modifier.height(8.dp))

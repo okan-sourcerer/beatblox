@@ -152,7 +152,7 @@ private fun MiniSourceBlock(
             .padding(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FnChooser(current = src.fn, options = Vocabulary.sourceFns, color = Mint) { vm.setSourceFn(chain.id, it) }
+            FnChooser(current = src.fn, options = Vocabulary.sourceFns, color = Mint, descriptions = Vocabulary.sourceDescriptions) { vm.setSourceFn(chain.id, it) }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { vm.previewChain(chain.id) }, modifier = Modifier.size(32.dp)) {
                 Icon(Icons.Default.PlayArrow, "Preview", tint = Mint)
@@ -231,7 +231,7 @@ private fun GroupBlock(
             .padding(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FnChooser(current = src.fn, options = Vocabulary.groupFns, color = Coral) { vm.setGroupFn(chain.id, it) }
+            FnChooser(current = src.fn, options = Vocabulary.groupFns, color = Coral, descriptions = Vocabulary.groupDescriptions) { vm.setGroupFn(chain.id, it) }
             Text(
                 "  ${src.children.size} layers",
                 style = MaterialTheme.typography.labelMedium,
@@ -368,7 +368,13 @@ private fun DragHandle(handle: Modifier) {
 }
 
 @Composable
-private fun FnChooser(current: String, options: List<String>, color: Color, onPick: (String) -> Unit) {
+private fun FnChooser(
+    current: String,
+    options: List<String>,
+    color: Color,
+    descriptions: Map<String, String> = emptyMap(),
+    onPick: (String) -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         Row(
@@ -385,7 +391,14 @@ private fun FnChooser(current: String, options: List<String>, color: Color, onPi
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             options.forEach { fn ->
                 DropdownMenuItem(
-                    text = { Text(fn, fontFamily = FontFamily.Monospace) },
+                    text = {
+                        Column {
+                            Text(fn, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
+                            descriptions[fn]?.let {
+                                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(240.dp))
+                            }
+                        }
+                    },
                     onClick = { open = false; onPick(fn) },
                 )
             }
@@ -415,10 +428,19 @@ private fun AddBlockButton(onAdd: (String) -> Unit) {
                 }
                 DropdownMenuItem(
                     text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(".${spec.name}", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
-                            Spacer(Modifier.width(8.dp))
-                            Text(spec.label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(".${spec.name}", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
+                                Spacer(Modifier.width(8.dp))
+                                Text(spec.label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text(
+                                spec.description,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                modifier = Modifier.width(260.dp),
+                            )
                         }
                     },
                     onClick = { open = false; onAdd(spec.name) },

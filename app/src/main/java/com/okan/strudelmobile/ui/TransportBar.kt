@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -43,6 +44,7 @@ fun TransportBar(
     cpm: Double,
     patternName: String?,
     onLibrary: () -> Unit,
+    onHelp: () -> Unit,
     canUndo: Boolean,
     canRedo: Boolean,
     onUndo: () -> Unit,
@@ -75,6 +77,7 @@ fun TransportBar(
             IconButton(onClick = onHush) { Icon(Icons.Default.VolumeOff, "Hush") }
             IconButton(onClick = onReset) { Icon(Icons.Default.RestartAlt, "Reset pattern") }
             IconButton(onClick = onLibrary) { Icon(Icons.Default.LibraryMusic, "Patterns") }
+            IconButton(onClick = onHelp) { Icon(Icons.AutoMirrored.Filled.HelpOutline, "Help") }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onUndo, enabled = canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, "Undo") }
             IconButton(onClick = onRedo, enabled = canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, "Redo") }
