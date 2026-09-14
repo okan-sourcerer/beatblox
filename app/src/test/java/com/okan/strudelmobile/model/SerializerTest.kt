@@ -104,4 +104,16 @@ class SerializerTest {
         c = TreeOps.removeTransform(c, "in1")
         assertEquals("""s("bd sd").every(4, x => x).jux(x => x.rev())""", Serializer.serialize(c).code)
     }
+
+    @Test
+    fun `layer args can be added and removed but never emptied`() {
+        var c = Chain(id = "L", source = MiniSource("note", "c3"), transforms = listOf(Vocabulary.newTransform("layer").copy(id = "ly")))
+        assertEquals("""note("c3").layer(x => x.fast(2), x => x.rev())""", Serializer.serialize(c).code)
+        c = TreeOps.addFnArg(c, "ly")
+        assertEquals("""note("c3").layer(x => x.fast(2), x => x.rev(), x => x)""", Serializer.serialize(c).code)
+        c = TreeOps.removeFnArg(c, "ly", 0)
+        c = TreeOps.removeFnArg(c, "ly", 0)
+        c = TreeOps.removeFnArg(c, "ly", 0) // last one stays
+        assertEquals("""note("c3").layer(x => x)""", Serializer.serialize(c).code)
+    }
 }

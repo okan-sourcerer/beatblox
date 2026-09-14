@@ -189,7 +189,36 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setPattern(chainId: String, pattern: String) = edit { TreeOps.setPattern(it, chainId, pattern) }
 
-    fun setSourceFn(chainId: String, fn: String) = edit(immediate = true) { TreeOps.setSourceFn(it, chainId, fn) }
+    fun setSourceFn(chainId: String, fn: String) = edit(immediate = true) { root ->
+        var r = TreeOps.setSourceFn(root, chainId, fn)
+        // chord symbols are silent until voiced; give the chain a .voicing() block.
+        if (fn == "chord") {
+            val chain = TreeOps.find(r, chainId)
+            if (chain != null && chain.transforms.none { it.fn == "voicing" }) {
+                r = TreeOps.addTransform(r, chainId, Vocabulary.newTransform("voicing"))
+            }
+        }
+        r
+    }
+
+    /**
+     * Append a chord symbol. With [alternate] the pattern is kept as `<a b c>`
+     * so chords take turns per cycle instead of splitting the cycle.
+     */
+    fun appendChord(chainId: String, token: String, alternate: Boolean) = edit(immediate = true) { root ->
+        val src = TreeOps.find(root, chainId)?.source as? MiniSource ?: return@edit root
+        val p = src.pattern.trim()
+        val next = when {
+            !alternate -> if (p.isEmpty()) token else "$p $token"
+            p.isEmpty() -> "<$token>"
+            p.startsWith("<") && p.endsWith(">") -> "<${p.substring(1, p.length - 1).trim()} $token>"
+            else -> "<$p $token>"
+        }
+        TreeOps.setPattern(root, chainId, next)
+    }
+
+    fun addFnArg(transformId: String) = edit(immediate = true) { TreeOps.addFnArg(it, transformId) }
+    fun removeFnArg(transformId: String, argIndex: Int) = edit(immediate = true) { TreeOps.removeFnArg(it, transformId, argIndex) }
 
     /** Append a token (note, sound name, rest) to a chain's pattern string. */
     fun appendToken(chainId: String, token: String) = edit(immediate = true) { root ->
@@ -200,8 +229,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteLastToken(chainId: String) = edit(immediate = true) { root ->
         val src = TreeOps.find(root, chainId)?.source as? MiniSource ?: return@edit root
-        val tokens = src.pattern.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        TreeOps.setPattern(root, chainId, tokens.dropLast(1).joinToString(" "))
+        val p = src.pattern.trim()
+        val wrapped = p.length > 1 && p.startsWith("<") && p.endsWith(">")
+        val inner = if (wrapped) p.substring(1, p.length - 1) else p
+        val tokens = inner.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.dropLast(1)
+        val next = if (wrapped && tokens.isNotEmpty()) "<${tokens.joinToString(" ")}>" else tokens.joinToString(" ")
+        TreeOps.setPattern(root, chainId, next)
     }
 
     fun addTransform(chainId: String, fn: String) {

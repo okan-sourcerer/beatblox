@@ -17,13 +17,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -35,6 +38,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.okan.strudelmobile.model.MiniSource
+import com.okan.strudelmobile.model.Vocabulary
 
 private val WhiteKeys = listOf("c", "d", "e", "f", "g", "a", "b")
 // Black key name and which white-key gap it sits after (index into WhiteKeys).
@@ -53,17 +57,18 @@ fun NotesPanel(vm: EditorViewModel) {
     val src = target?.source as? MiniSource
 
     if (target == null || src == null) {
-        Hint("Select a note or n block to pick notes.")
+        Hint("Select a note, n or chord block to pick notes.")
         return
     }
 
-    Column(Modifier.fillMaxSize().padding(8.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp)) {
         when (src.fn) {
             "s" -> {
                 Hint("This block is a sound (s). Use the Sounds tab, or switch it to note / n.")
                 return
             }
             "n" -> DegreePad(target.id, vm)
+            "chord" -> ChordPad(target.id, target.transforms.any { it.fn == "voicing" }, vm)
             else -> Piano(target.id, vm)
         }
     }
@@ -189,6 +194,60 @@ private fun DegreePad(chainId: String, vm: EditorViewModel) {
                     contentAlignment = Alignment.Center,
                 ) { Text(token, fontFamily = FontFamily.Monospace, color = Amber) }
             }
+        }
+    }
+}
+
+/** Root × quality picker for `chord` chains. */
+@Composable
+private fun ChordPad(chainId: String, hasVoicing: Boolean, vm: EditorViewModel) {
+    var rootNote by rememberSaveable { mutableStateOf("C") }
+    var alternate by rememberSaveable { mutableStateOf(true) }
+
+    TokenTools(chainId, vm) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FilterChip(
+                selected = alternate,
+                onClick = { alternate = !alternate },
+                label = { Text(if (alternate) "<one per cycle>" else "split the cycle", style = MaterialTheme.typography.labelSmall) },
+            )
+        }
+    }
+    if (!hasVoicing) {
+        Text(
+            "No .voicing() block on this chain — chords will be silent. Add one with + Add block.",
+            color = Coral,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+    Spacer(Modifier.height(6.dp))
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Vocabulary.chordRoots.forEach { r ->
+            FilterChip(selected = rootNote == r, onClick = { rootNote = r }, label = { Text(r, fontFamily = FontFamily.Monospace) })
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    Vocabulary.chordQualities.chunked(5).forEach { row ->
+        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            row.forEach { (suffix, label) ->
+                val token = rootNote + suffix
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                        .clickable { vm.appendChord(chainId, token, alternate); vm.previewToken(chainId, token) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(token, fontFamily = FontFamily.Monospace, color = Amber, style = MaterialTheme.typography.bodyMedium)
+                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            // keep the grid aligned on the last, shorter row
+            repeat(5 - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }

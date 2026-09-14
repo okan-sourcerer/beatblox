@@ -30,6 +30,8 @@ data class FunctionSpec(
     val params: List<ParamSpec> = emptyList(),
     /** One plain-language sentence for people who don't know Strudel. */
     val description: String = "",
+    /** `layer(fn, fn, ...)`: any number of function args may be added/removed. */
+    val variadicFn: Boolean = false,
 ) {
     enum class Category { TIME, SOUND, PITCH, FILTER, SPACE, DYNAMICS, STRUCTURE }
 
@@ -49,13 +51,24 @@ object Vocabulary {
     private fun innerRev(): () -> List<Transform> = { listOf(Transform(fn = "rev")) }
 
     /** Functions that can start a chain and take a mini-notation string. */
-    val sourceFns = listOf("s", "note", "n")
+    val sourceFns = listOf("s", "note", "n", "chord")
 
     val sourceDescriptions = mapOf(
         "s" to "sound: play samples by name — \"bd sd hh\". Unpitched; pick names in the Sounds tab.",
         "note" to "note: play pitches — \"c3 e3 g3\" or MIDI numbers. Add an .s() block to choose the instrument.",
         "n" to "n: numbers — sample index inside a sound, or scale degree when a .scale() block is present.",
+        "chord" to "chord: chord symbols — \"<C^7 Am7 Dm7 G7>\". Needs a .voicing() block to turn them into notes.",
     )
+
+    /** Chord qualities the voicing dictionary (ireal) understands, with labels for the picker. */
+    val chordQualities: List<Pair<String, String>> = listOf(
+        "" to "major", "m" to "minor", "7" to "dom 7", "^7" to "maj 7", "m7" to "min 7",
+        "6" to "6", "m6" to "min 6", "9" to "9", "^9" to "maj 9", "m9" to "min 9",
+        "add9" to "add 9", "69" to "6/9", "11" to "11", "m11" to "min 11", "13" to "13",
+        "sus" to "sus 4", "7sus" to "7 sus", "o" to "dim", "o7" to "dim 7", "h7" to "half-dim",
+        "aug" to "aug", "7b9" to "7 b9", "7#9" to "7 #9", "7#11" to "7 #11", "m^7" to "min/maj 7",
+    )
+    val chordRoots = listOf("C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B")
 
     /** Functions that combine child chains. */
     val groupFns = listOf("stack", "seq", "cat")
@@ -169,6 +182,15 @@ object Vocabulary {
         FunctionSpec("roomfade", "reverb fade", FunctionSpec.Category.SPACE, listOf(ParamSpec.Number("seconds", 0.1, 10.0, 0.1, 2.0)), description = "Reverb tail length in seconds."),
         FunctionSpec("roomlp", "reverb tone", FunctionSpec.Category.SPACE, listOf(ParamSpec.Number("cutoff", 200.0, 10000.0, 100.0, 5000.0)), description = "Darkens the reverb by low-passing its tail."),
         FunctionSpec("orbit", "orbit", FunctionSpec.Category.SPACE, listOf(ParamSpec.Number("bus", 1.0, 4.0, 1.0, 2.0)), description = "Effects bus: layers on different orbits get separate reverb/delay instead of sharing one."),
+
+        // --- chords ---
+        FunctionSpec("chord", "chord", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("symbols", "<C^7 Am7 Dm7 G7>")), description = "Chord symbols per step. On an n chain, n picks notes out of each chord. Needs .voicing() after it."),
+        FunctionSpec("voicing", "voicing", FunctionSpec.Category.PITCH, description = "Turns chord symbols into actual notes, choosing smooth voice-leading between chords."),
+        FunctionSpec("anchor", "anchor", FunctionSpec.Category.PITCH, listOf(ParamSpec.Text("note", "c5", isMini = false)), description = "Where voicings sit: the top note stays at or below this (default c5). Put it before .voicing()."),
+        FunctionSpec("mode", "voicing mode", FunctionSpec.Category.PITCH, listOf(ParamSpec.Choice("mode", listOf("below", "above", "duck", "root"), "below")), description = "How voicings relate to the anchor: below/above it, duck (avoid it), or root (anchor is the bass note)."),
+
+        // --- layer ---
+        FunctionSpec("layer", "layer", FunctionSpec.Category.STRUCTURE, listOf(ParamSpec.Fn("a", inner("fast", 2.0)), ParamSpec.Fn("b", innerRev())), description = "Plays several versions of the pattern at once, one per function — like a stack of transformations.", variadicFn = true),
     )
 
     private val byName = transforms.associateBy { it.name }

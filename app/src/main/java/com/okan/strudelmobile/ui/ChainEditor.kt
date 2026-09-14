@@ -173,7 +173,7 @@ private fun MiniSourceBlock(
             singleLine = true,
             visualTransformation = HighlightTransformation(activeTokens),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false),
-            placeholder = { Text(if (src.fn == "s") "bd sd hh" else "c3 e3 g3") },
+            placeholder = { Text(when (src.fn) { "s" -> "bd sd hh"; "chord" -> "<C^7 Am7 Dm7 G7>"; "n" -> "0 2 4 7"; else -> "c3 e3 g3" }) },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Sky,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -342,16 +342,24 @@ private fun TransformBlock(
         }
     }
     // Function arguments: an indented mini-chain of blocks, `x => x.<these>`.
+    val fnCount = transform.args.count { it is Arg.Fn }
     transform.args.forEachIndexed { argIndex, arg ->
         if (arg !is Arg.Fn) return@forEachIndexed
-        val paramName = (spec?.params?.getOrNull(argIndex) as? ParamSpec.Fn)?.name ?: "do"
+        val paramName = if (spec?.variadicFn == true) "layer ${argIndex + 1}" else (spec?.params?.getOrNull(argIndex) as? ParamSpec.Fn)?.name ?: "do"
         Column(Modifier.fillMaxWidth().padding(start = 24.dp, top = 4.dp, end = 4.dp)) {
-            Text(
-                "$paramName: x →",
-                style = MaterialTheme.typography.labelSmall,
-                fontFamily = FontFamily.Monospace,
-                color = color,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$paramName: x →",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = color,
+                )
+                if (spec?.variadicFn == true && fnCount > 1) {
+                    IconButton(onClick = { vm.removeFnArg(transform.id, argIndex) }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, "Remove layer", tint = Coral, modifier = Modifier.size(14.dp))
+                    }
+                }
+            }
             Spacer(Modifier.height(4.dp))
             ReorderableColumn(
                 items = arg.transforms,
@@ -362,6 +370,16 @@ private fun TransformBlock(
                 TransformBlock(inner, selection, innerDragging, innerHandle, vm)
             }
             AddBlockButton(compact = true, onAdd = { vm.addNestedTransform(transform.id, argIndex, it) })
+        }
+    }
+    if (spec?.variadicFn == true) {
+        TextButton(
+            onClick = { vm.addFnArg(transform.id) },
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+            modifier = Modifier.padding(start = 16.dp),
+        ) {
+            Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp), tint = color)
+            Text(" add layer", style = MaterialTheme.typography.labelMedium, color = color)
         }
     }
     }

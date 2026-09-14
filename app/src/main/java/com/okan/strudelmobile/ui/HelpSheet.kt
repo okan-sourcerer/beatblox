@@ -66,6 +66,13 @@ fun HelpSheet(onDismiss: () -> Unit) {
             )
             SoundDescriptions.drumAbbrev.entries.take(14).forEach { (k, v) -> Entry(k, v) }
 
+            Section("Chords")
+            Body(
+                "A chord top block holds symbols like C^7 (maj7), Am7, G7, Dm7b5 (h7), Bbaug; a .voicing() block " +
+                    "turns each into notes with smooth voice-leading. Put .s(\"piano\") after it. On an n chain, " +
+                    "n(\"0 1 2 3\").chord(\"<C^7 Am7>\").voicing() arpeggiates through the chord tones.",
+            )
+
             Section("Tips")
             Body("▶ on a block auditions just that chain, even while the transport is stopped.")
             Body("Piano keys and sound names insert into the selected top block and audition through its chain.")

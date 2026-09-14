@@ -36,6 +36,16 @@ object TreeOps {
         return null
     }
 
+    /** `layer(...)`: append another function argument. */
+    fun addFnArg(root: Chain, transformId: String): Chain =
+        updateTransform(root, transformId) { it.copy(args = it.args + Arg.Fn()) }
+
+    /** `layer(...)`: drop one function argument (never the last). */
+    fun removeFnArg(root: Chain, transformId: String, argIndex: Int): Chain =
+        updateTransform(root, transformId) { t ->
+            if (t.args.count { it is Arg.Fn } <= 1) t else t.copy(args = t.args.filterIndexed { i, _ -> i != argIndex })
+        }
+
     /** Add a block inside a function argument: `every(4, x => x.<new>)`. */
     fun addNestedTransform(root: Chain, parentTransformId: String, argIndex: Int, transform: Transform): Chain =
         updateTransform(root, parentTransformId) { t ->
