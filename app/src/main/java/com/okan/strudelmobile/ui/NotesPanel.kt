@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -98,14 +97,20 @@ private fun Piano(chainId: String, vm: EditorViewModel) {
     var octave by rememberSaveable { mutableIntStateOf(3) }
 
     TokenTools(chainId, vm) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            (1..6).forEach { o ->
-                FilterChip(
-                    selected = octave == o,
-                    onClick = { octave = o },
-                    label = { Text("$o", modifier = Modifier.padding(horizontal = 2.dp)) },
-                )
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = { if (octave > 1) octave-- },
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+            ) { Text("−") }
+            Text(
+                "oct $octave",
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(horizontal = 10.dp),
+            )
+            OutlinedButton(
+                onClick = { if (octave < 7) octave++ },
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+            ) { Text("+") }
         }
     }
     Spacer(Modifier.height(8.dp))

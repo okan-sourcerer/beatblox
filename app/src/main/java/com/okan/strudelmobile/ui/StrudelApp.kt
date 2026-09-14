@@ -57,6 +57,8 @@ fun StrudelApp(vm: EditorViewModel) {
     val playing by vm.engine.playing.collectAsStateWithLifecycle()
     val error by vm.engine.lastError.collectAsStateWithLifecycle()
     val cpm by vm.cpm.collectAsStateWithLifecycle()
+    val canUndo by vm.canUndo.collectAsStateWithLifecycle()
+    val canRedo by vm.canRedo.collectAsStateWithLifecycle()
 
     LaunchedEffect(error) {
         if (error != null) {
@@ -79,6 +81,10 @@ fun StrudelApp(vm: EditorViewModel) {
                 ready = ready,
                 playing = playing,
                 cpm = cpm,
+                canUndo = canUndo,
+                canRedo = canRedo,
+                onUndo = vm::undo,
+                onRedo = vm::redo,
                 onTogglePlay = vm::togglePlay,
                 onHush = vm::hush,
                 onCpm = vm::setCpm,

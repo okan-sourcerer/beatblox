@@ -1,6 +1,7 @@
 package com.okan.strudelmobile.model
 
 import java.util.UUID
+import kotlinx.serialization.Serializable
 
 /**
  * The pattern tree — the single source of truth for what the app plays.
@@ -13,36 +14,42 @@ import java.util.UUID
  * Everything is immutable; edits produce a new tree via the helpers in
  * [TreeOps].
  */
+@Serializable
 data class Chain(
     val id: String = newId(),
     val source: Source,
     val transforms: List<Transform> = emptyList(),
 )
 
+@Serializable
 sealed interface Source
 
 /** A function call taking one mini-notation string: `s("bd sd")`, `note("c e g")`, `n("0 2 4")`. */
+@Serializable
 data class MiniSource(
     val fn: String,
     val pattern: String,
 ) : Source
 
 /** A combinator over child chains: `stack(...)`, `seq(...)`, `cat(...)`. */
+@Serializable
 data class GroupSource(
     val fn: String,
     val children: List<Chain>,
 ) : Source
 
 /** One chained method call: `.fast(2)`, `.s("piano")`, `.rev()`. */
+@Serializable
 data class Transform(
     val id: String = newId(),
     val fn: String,
     val args: List<Arg> = emptyList(),
 )
 
+@Serializable
 sealed interface Arg {
-    data class Num(val value: Double) : Arg
-    data class Str(val value: String) : Arg
+    @Serializable data class Num(val value: Double) : Arg
+    @Serializable data class Str(val value: String) : Arg
 }
 
 fun newId(): String = UUID.randomUUID().toString().substring(0, 8)

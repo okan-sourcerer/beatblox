@@ -8,6 +8,7 @@ import com.okan.strudelmobile.model.Arg
 import com.okan.strudelmobile.model.Chain
 import com.okan.strudelmobile.model.GroupSource
 import com.okan.strudelmobile.model.MiniSource
+import com.okan.strudelmobile.model.PatternStore
 import com.okan.strudelmobile.model.Serializer
 import com.okan.strudelmobile.model.Transform
 import com.okan.strudelmobile.model.TreeOps
@@ -17,7 +18,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 sealed interface Selection {
@@ -31,8 +31,9 @@ enum class Panel(val label: String) { NOTES("Notes"), SOUNDS("Sounds"), PARAMS("
 class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     val engine = StrudelEngine(app)
+    private val store = PatternStore(app)
 
-    private val _root = MutableStateFlow(defaultPattern())
+    private val _root = MutableStateFlow(store.load() ?: defaultPattern())
     val root: StateFlow<Chain> = _root.asStateFlow()
 
     private val _selection = MutableStateFlow<Selection>(Selection.Source(_root.value.let { TreeOps.miniSources(it).first().id }))
@@ -44,8 +45,17 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private val _code = MutableStateFlow(Serializer.serialize(_root.value).code)
     val code: StateFlow<String> = _code.asStateFlow()
 
-    private val _cpm = MutableStateFlow(30.0)
+    private val _cpm = MutableStateFlow(store.loadCpm(30.0))
     val cpm: StateFlow<Double> = _cpm.asStateFlow()
+
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
+    private val _canRedo = MutableStateFlow(false)
+    val canRedo: StateFlow<Boolean> = _canRedo.asStateFlow()
+
+    private val undoStack = ArrayDeque<Chain>()
+    private val redoStack = ArrayDeque<Chain>()
+    private var lastUndoPushAt = 0L
 
     private var pushJob: Job? = null
     private var pushedOnce = false
@@ -56,6 +66,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             engine.ready.collect { ready ->
                 if (ready && !pushedOnce) {
                     pushedOnce = true
+                    engine.setCpm(_cpm.value)
                     push(immediate = true)
                 }
             }
@@ -77,6 +88,47 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun setCpm(v: Double) {
         _cpm.value = v
         engine.setCpm(v)
+        store.saveCpm(v)
+    }
+
+    // --- undo / redo ------------------------------------------------------------
+
+    fun undo() {
+        val prev = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(_root.value)
+        _root.value = prev
+        updateUndoState()
+        push(immediate = true)
+    }
+
+    fun redo() {
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(_root.value)
+        _root.value = next
+        updateUndoState()
+        push(immediate = true)
+    }
+
+    /**
+     * Snapshot before an edit. Continuous edits (typing, slider drags) arrive
+     * with immediate=false and are coalesced into one undo step per burst.
+     */
+    private fun recordUndo(immediate: Boolean) {
+        val now = System.currentTimeMillis()
+        if (!immediate && now - lastUndoPushAt < UNDO_COALESCE_MS) {
+            lastUndoPushAt = now
+            return
+        }
+        lastUndoPushAt = now
+        undoStack.addLast(_root.value)
+        if (undoStack.size > UNDO_LIMIT) undoStack.removeFirst()
+        redoStack.clear()
+        updateUndoState()
+    }
+
+    private fun updateUndoState() {
+        _canUndo.value = undoStack.isNotEmpty()
+        _canRedo.value = redoStack.isNotEmpty()
     }
 
     // --- selection / panel ----------------------------------------------------
@@ -113,7 +165,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // --- tree edits -------------------------------------------------------------
 
     private fun edit(immediate: Boolean = false, f: (Chain) -> Chain) {
-        _root.update(f)
+        val before = _root.value
+        val after = f(before)
+        if (after == before) return
+        recordUndo(immediate)
+        _root.value = after
         push(immediate)
     }
 
@@ -202,17 +258,24 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // --- push to engine -------------------------------------------------------------
 
     private fun push(immediate: Boolean = false, autostart: Boolean? = null) {
-        val serialized = Serializer.serialize(_root.value)
+        val root = _root.value
+        val serialized = Serializer.serialize(root)
         _code.value = serialized.code
         pushJob?.cancel()
         pushJob = viewModelScope.launch {
             if (!immediate) delay(200)
             engine.setPattern(serialized.code, serialized.locationsJson(), autostart ?: engine.playing.value)
+            store.save(root)
         }
     }
 
     override fun onCleared() {
         engine.destroy()
+    }
+
+    private companion object {
+        const val UNDO_LIMIT = 100
+        const val UNDO_COALESCE_MS = 800L
     }
 
     private fun defaultPattern(): Chain = Chain(
